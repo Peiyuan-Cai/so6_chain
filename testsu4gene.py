@@ -129,7 +129,7 @@ def S_representation_matrix_ordering(alpha, beta, arrange_order):
         oprs.insert(0, bra[0])
         oprs.insert(0, bra[1])
         for right in range(1,7):
-            ket = get_ket_from_6states(right)
+            ket = get_ket_from_6states_from_order(right)
             coe, ket = oprs_on_ket(oprs, ket)
             if ket == []:
                 S_mat[left-1, right-1] = coe
@@ -159,3 +159,43 @@ if __name__ == "__main__":
 
     print('norm of oprs', norm_of_generators)
     """
+    
+    carton = []
+    for a in range(1,4):
+        carton.append(S_representation_matrix(a,a))
+    so6g = dict()
+    for a in range(1,5):
+        for b in range(1,5):
+            so6g[(a,b)] = S_representation_matrix(a,b)
+
+    ham1 = np.zeros( (36,36) )
+    for a in range(1,5):
+        for b in range(a,5):
+            if a!=b:
+                ham1 += np.kron( so6g[(a,b)], so6g[(b,a)] )
+                ham1 += np.kron( so6g[(b,a)], so6g[(a,b)] )
+            elif a == b:
+                ham1 += np.kron( so6g[(a,a)], so6g[(a,a)] )
+    ham1 = ham1.reshape((6,6,6,6))
+
+    so6g[(1,1)] = np.diag([-1,-1,-1, 1, 1, 1])/np.sqrt(3)
+    so6g[(2,2)] = np.diag([-2, 1, 1,-1,-1, 2])/np.sqrt(6)
+    so6g[(3,3)] = np.diag([ 0,-1, 1,-1, 1, 0])/np.sqrt(2)
+    ham2 = np.zeros( (36,36) )
+    for a in range(1,5):
+        for b in range(a,5):
+            if a!=b :
+                ham2 += np.kron( so6g[(a,b)], so6g[(b,a)] )
+                ham2 += np.kron( so6g[(b,a)], so6g[(a,b)] )
+            elif a == b and a < 4:
+                ham2 += np.kron( so6g[(a,a)], so6g[(a,a)] )
+    ham2 = ham2.reshape((6,6,6,6))
+
+    print(np.allclose(ham1,ham2))
+
+    for a in range(6):
+        for b in range(6):
+            for c in range(6):
+                for d in range(6):
+                    if abs(ham1[a,b,c,d]) > 1e-8:
+                        print(a,b,c,d, ham1[a, b, c, d] )
