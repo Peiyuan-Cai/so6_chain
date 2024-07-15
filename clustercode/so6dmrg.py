@@ -274,10 +274,11 @@ class BBQJK(CouplingModel):
             self.add_coupling_term(J-2*K,  i0, i1, "lambda10", "lambda10")
             self.add_coupling_term(J-2*K,  i0, i1, "lambda11", "lambda14", plus_hc=True)
             
-            for m in range(36):
-                for n in range(36):
-                    if (np.abs(c_mn[m,n]) > 1e-6) and not(np.allclose(np.kron(so6_generators[m], so6_generators[n]), np.zeros((36,36)), atol=1e-6)) and ((m,n) not in {(0,0),(1,4),(4,1),(2,8),(8,2),(3,12),(12,3),(5,5),(6,9),(9,6),(7,13),(13,7),(10,10),(11,14),(14,11),(15,15)}):
-                        self.add_coupling_term(K*np.round(c_mn[m,n],6),  i0, i1, "lambda"+str(m), "lambda"+str(n)) #no identity here but the energy has shifted
+            if np.abs(K) > 1e-6:
+                for m in range(36):
+                    for n in range(36):
+                        if (np.abs(c_mn[m,n]) > 1e-6) and not(np.allclose(np.kron(so6_generators[m], so6_generators[n]), np.zeros((36,36)), atol=1e-6)) and ((m,n) not in {(0,0),(1,4),(4,1),(2,8),(8,2),(3,12),(12,3),(5,5),(6,9),(9,6),(7,13),(13,7),(10,10),(11,14),(14,11),(15,15)}):
+                            self.add_coupling_term(K*np.round(c_mn[m,n],6),  i0, i1, "lambda"+str(m), "lambda"+str(n)) #no identity here but the energy has shifted
     
     def run_dmrg(self, **kwargs):
         mixer      = kwargs.get('mixer', True)
@@ -333,15 +334,6 @@ if __name__ == "__main__":
     parser.add_argument("-sweeps", type=int, default=10)
     args = parser.parse_args()
 
-    #pathmaking
-    import os
-    homepath  = os.getcwd()
-    if os.path.isdir(homepath+'/data/') == False:
-        os.mkdir(homepath+'/data/')
-    path = homepath + '/data/' + "SO6DMRG_t1t2tx_Ly_{}_Lx_{}/".format(args.Ly, args.Lx)
-    if os.path.isdir(path) == False:
-        os.mkdir(path)
-
     np.random.seed(0)
     
     J, K = round(args.J, 6), round(args.K, 6)
@@ -353,23 +345,32 @@ if __name__ == "__main__":
         bc = 'open'
     else:
         raise "pbc must be 1(periodic) or 0(open)"
+    
+    #pathmaking
+    import os
+    homepath  = os.getcwd()
+    if os.path.isdir(homepath+'/data/') == False:
+        os.mkdir(homepath+'/data/')
+    path = homepath + '/data/' + "SO6DMRG_lx{}_K{}_pbc{}/".format(lx, K, pbc)
+    if os.path.isdir(path) == False:
+        os.mkdir(path)
 
     #global variables
     so6_generators, c_mn = get_opr_list()
     
     model_paras = dict(cons_N=None, cons_S='U1', Lx = lx, bc=bc, J=J, K=K, D=D, sweeps=sweeps)
     so6bbq = BBQJK(model_paras)
-    dmrg_psi, E = so6bbq.run_dmrg()
+    psi_dmrg, E = so6bbq.run_dmrg()
     print("DMRG results")
-    print("DMRG psi", dmrg_psi)
+    print("DMRG psi", psi_dmrg)
+
+    #DMRG state saving
+    fname = path+'psidmrg_lx{}_K{}_pbc{}_D{}_sweeps{}'.format(lx, K, pbc, D, sweeps)
+    with open(fname, 'wb') as f:
+        pickle.dump(psi_dmrg, f)
 
     for i in {0,5,10,15,16,20}:
         print("i=",i)
-        print('expectation value of lambda',i,'is', dmrg_psi.expectation_value("lambda"+str(i)))
+        print('expectation value of lambda',i,'is', psi_dmrg.expectation_value("lambda"+str(i)))
 
-    print("entropy", dmrg_psi.entanglement_entropy())
-
-    corrs05 = dmrg_psi.correlation_function("lambda0","lambda5")
-    corrs010 = dmrg_psi.correlation_function("lambda0","lambda10")
-    print("cor05", corrs05)
-    print("corrs010", corrs010)
+    print("entropy", psi_dmrg.entanglement_entropy())
