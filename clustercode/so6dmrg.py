@@ -1,5 +1,7 @@
 """
 SO6 chain DMRG code compact version for HPC use. 
+
+Puiyuen 240712-240716
 """
 import numpy as np
 import numpy.linalg as LA
@@ -241,8 +243,11 @@ class BBQJK(CouplingModel):
         self.verbose = model_params.get('verbose', 2)
         self.D = model_params.get('D', 64)
         self.sweeps = model_params.get('sweeps', 6)
+        
+        #defined as self variables 240716
+        self.so6_generators, self.c_mn = get_opr_list()
 
-        site = SO6Site(so6_generators, cons_N=None, cons_S='U1')
+        site = SO6Site(self.so6_generators, cons_N=None, cons_S='U1')
         self.sites = [site] * self.Lx
         self.lat = Chain(self.Lx, site, bc=self.bc)
         CouplingModel.__init__(self, self.lat, explicit_plus_hc=False)
@@ -277,8 +282,8 @@ class BBQJK(CouplingModel):
             if np.abs(K) > 1e-6:
                 for m in range(36):
                     for n in range(36):
-                        if (np.abs(c_mn[m,n]) > 1e-6) and not(np.allclose(np.kron(so6_generators[m], so6_generators[n]), np.zeros((36,36)), atol=1e-6)) and ((m,n) not in {(0,0),(1,4),(4,1),(2,8),(8,2),(3,12),(12,3),(5,5),(6,9),(9,6),(7,13),(13,7),(10,10),(11,14),(14,11),(15,15)}):
-                            self.add_coupling_term(K*np.round(c_mn[m,n],6),  i0, i1, "lambda"+str(m), "lambda"+str(n)) #no identity here but the energy has shifted
+                        if (np.abs(self.c_mn[m,n]) > 1e-10) and not(np.allclose(np.kron(self.so6_generators[m], self.so6_generators[n]), np.zeros((36,36)), atol=1e-10)) and ((m,n) not in {(0,0),(1,4),(4,1),(2,8),(8,2),(3,12),(12,3),(5,5),(6,9),(9,6),(7,13),(13,7),(10,10),(11,14),(14,11),(15,15)}):
+                            self.add_coupling_term(K*np.round(self.c_mn[m,n],6),  i0, i1, "lambda"+str(m), "lambda"+str(n)) #no identity here but the energy has shifted
     
     def run_dmrg(self, **kwargs):
         mixer      = kwargs.get('mixer', True)
@@ -332,9 +337,11 @@ if __name__ == "__main__":
     parser.add_argument("-D", type=int, default=64)
     parser.add_argument("-pbc", type=int, default=1)
     parser.add_argument("-sweeps", type=int, default=10)
+    parser.add_argument("-job", type=str, default='dmrg')
     args = parser.parse_args()
 
     np.random.seed(0)
+    np.set_printoptions(threshold=np.inf, linewidth=np.inf, precision=10, suppress=True)
     
     J, K = round(args.J, 6), round(args.K, 6)
     lx, D, pbc, sweeps = args.lx, args.D, args.pbc, args.sweeps
@@ -351,26 +358,58 @@ if __name__ == "__main__":
     homepath  = os.getcwd()
     if os.path.isdir(homepath+'/data/') == False:
         os.mkdir(homepath+'/data/')
-    path = homepath + '/data/' + "SO6DMRG_lx{}_K{}_pbc{}/".format(lx, K, pbc)
+    path = homepath + '/data/' + "SO6DMRG_lx{}_J{}_K{}_pbc{}/".format(lx, J, K, pbc)
     if os.path.isdir(path) == False:
         os.mkdir(path)
+    fname = path+'psidmrg_lx{}_J{}_K{}_pbc{}_D{}_sweeps{}'.format(lx, J, K, pbc, D, sweeps)
 
-    #global variables
-    so6_generators, c_mn = get_opr_list()
+    #not global variables anymore 240716
+    #so6_generators, c_mn = get_opr_list()
     
     model_paras = dict(cons_N=None, cons_S='U1', Lx = lx, bc=bc, J=J, K=K, D=D, sweeps=sweeps)
     so6bbq = BBQJK(model_paras)
-    psi_dmrg, E = so6bbq.run_dmrg()
-    print("DMRG results")
-    print("DMRG psi", psi_dmrg)
+    
+    if args.job == 'dmrg':
+        print("----------Start Job DMRG----------")
+        psi_dmrg, E = so6bbq.run_dmrg()
+        print("DMRG results")
+        print("DMRG psi", psi_dmrg)
+        
+        #DMRG state saving
+        with open(fname, 'wb') as f:
+            pickle.dump(psi_dmrg, f)
+            
+        #small measurements along with DMRG, not printing local operators anymore
+        print("entropy", psi_dmrg.entanglement_entropy())
+        
+    if args.job == 'measure':
+        print("----------Start Job Measure----------")
+        #DMRG state loading
+        with open(fname, 'rb') as f:
+            psi_dmrg = pickle.load(f)
+        print(psi_dmrg)
+        
+        print("-----energy-----")
+        bbqmpo = so6bbq.calc_H_MPO()
+        print("The DMRG energy of psi is", bbqmpo.expectation_value(psi_dmrg))
+        
+        print("-----entropy-----")
+        print("The entanglement entropy of psi is", psi_dmrg.entanglement_entropy().tolist()) #printing tolist for preserving commas
 
-    #DMRG state saving
-    fname = path+'psidmrg_lx{}_K{}_pbc{}_D{}_sweeps{}'.format(lx, K, pbc, D, sweeps)
-    with open(fname, 'wb') as f:
-        pickle.dump(psi_dmrg, f)
+        print("-----local operators expectations-----")
+        for i in {0,5,10,15,20}: #not printing 16 16 anymore 240716
+            print("i=",i)
+            print('expectation value of lambda',i,'is', psi_dmrg.expectation_value("lambda"+str(i)).tolist())
 
-    for i in {0,5,10,15,16,20}:
-        print("i=",i)
-        print('expectation value of lambda',i,'is', psi_dmrg.expectation_value("lambda"+str(i)))
-
-    print("entropy", psi_dmrg.entanglement_entropy())
+        print("-----spin-spin correlations-----")
+        spinspin_corr = np.zeros((lx,lx))
+        for (m,n) in {(0,0),(1,4),(4,1),(2,8),(8,2),(3,12),(12,3),(5,5),(6,9),(9,6),(7,13),(13,7),(10,10),(11,14),(14,11)}:
+            spinspin_corr += psi_dmrg.correlation_function('lambda'+str(m), 'lambda'+str(n))
+        print('spinspin correlation function is', spinspin_corr)
+        
+        print("-----squared spin-spin correlations-----")
+        sqrd_spinspin_corr = np.zeros((lx,lx))
+        for m in range(36):
+            for n in range(36):
+                sqrd_spinspin_corr += so6bbq.c_mn[m,n] * psi_dmrg.correlation_function('lambda'+str(m), 'lambda'+str(n))
+        print('sqrd spinspin correlation function is', sqrd_spinspin_corr)

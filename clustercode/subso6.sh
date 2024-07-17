@@ -15,9 +15,10 @@ K=$3
 D=$4
 pbc=$5
 sweeps=$6
+job=$7
 
 echo "Execute job on host $HOSTNAME at $(date)"
 
-python so6dmrg.py -lx ${lx} -J ${J} -K ${K} -D ${D} -pbc ${pbc} -sweeps ${sweeps}
+python so6dmrg.py -lx=${lx} -J=${J} -K=${K} -D=${D} -pbc=${pbc} -sweeps=${sweeps} -job=${job}
 
 echo "Finished job on host $HOSTNAME at $(date)"
