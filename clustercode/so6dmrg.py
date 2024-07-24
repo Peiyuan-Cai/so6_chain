@@ -466,7 +466,7 @@ if __name__ == "__main__":
     if args.job == 'measure':
         print("----------Start Job Measure----------")
         #DMRG state loading
-        fname = path+'psidmrg_jobdmrg2_lx{}_J{}_K{}_pbc{}_D{}_sweeps{}'.format(lx, J, K, pbc, D, sweeps)
+        fname = path+'psidmrg_jobdmrg_lx{}_J{}_K{}_pbc{}_D{}_sweeps{}'.format(lx, J, K, pbc, D, sweeps)
         with open(fname, 'rb') as f:
             psi_dmrg = pickle.load(f)
         print(psi_dmrg)
