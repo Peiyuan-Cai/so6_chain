@@ -139,7 +139,7 @@ def get_opr_list():
                     #print("shape of coe", coe.shape)
                     if len(resi)!=0 and resi[0]>1e-10: #no solution
                         so6g.append(SiSi)
-                        print("a,b,c,d",a,b,c,d,"New added to so6g, now we have",len(so6g),'operators. ')
+                        #print("a,b,c,d",a,b,c,d,"New added to so6g, now we have",len(so6g),'operators. ') #no more output here 240724
                         pcoe = np.append(np.zeros((len(so6g)-1, 1)),1).reshape(len(so6g),1)
                         coe_list.append(pcoe)
                     else:
@@ -295,7 +295,8 @@ class BBQJK(CouplingModel):
                            trunc_params=dict(chi_max=chi_max),
                            max_E_err=max_E_err, 
                            max_sweeps=max_sweeps,
-                           min_sweeps=min_sweeps)
+                           min_sweeps=min_sweeps,
+                           verbose=2)
 
         init = kwargs.get('init', None)
         if init is None:
@@ -326,6 +327,50 @@ class BBQJK(CouplingModel):
         print("Eng = ", E+Econst)
         self.psidmrg = psidmrg
         return psidmrg, E+Econst
+    
+    def run_dmrg_orthogonal(self, gs1, **kwargs):
+        mixer      = kwargs.get('mixer', True)
+        chi_max    = kwargs.get('chi_max', self.D)
+        max_E_err  = kwargs.get('max_E_err', 1e-10)
+        max_sweeps = kwargs.get('max_sweeps', self.sweeps)
+        min_sweeps = kwargs.get('min_sweeps', min(3, max_sweeps) )
+        dmrg_params = dict(mixer=mixer, 
+                           trunc_params=dict(chi_max=chi_max),
+                           max_E_err=max_E_err, 
+                           max_sweeps=max_sweeps,
+                           min_sweeps=min_sweeps,
+                           verbose=2,
+                           orthogonal_to=[gs1])
+
+        init = kwargs.get('init', None)
+        if init is None:
+            N = self.lat.N_sites
+            init = [0]*(N//6) + [1]*(N//6) + [2]*(N//6) + [3]*(N//6) + [4]*(N//6) + [5]*(N//6)
+            np.random.shuffle(init)
+            psiinit = MPS.from_product_state(self.lat.mps_sites(), init)
+            psiinit.norm = 1
+            psiinit.canonical_form()
+        elif isinstance(init, str):
+            with open (init, 'rb') as f:
+                psiinit = pickle.load(f)
+            dmrg_params['mixer'] = False
+        elif isinstance(init, list):
+            psiinit = MPS.from_product_state(self.lat.mps_sites(), init)
+        elif isinstance(init, MPS):
+            psiinit = init
+        else:
+            print("wrong init")
+
+        if self.bc == 'periodic':
+            Econst = 5/3 * K * lx
+        elif self.bc == 'open':
+            Econst = 5/3 * K * (lx-1)
+            
+        eng = dmrg.TwoSiteDMRGEngine(psiinit, self, dmrg_params)
+        E, psidmrg = eng.run()
+        print("Eng = ", E+Econst)
+        self.psidmrg = psidmrg
+        return psidmrg, E+Econst
 
 if __name__ == "__main__":
     #parsers
@@ -338,18 +383,29 @@ if __name__ == "__main__":
     parser.add_argument("-pbc", type=int, default=1)
     parser.add_argument("-sweeps", type=int, default=10)
     parser.add_argument("-job", type=str, default='dmrg')
+    parser.add_argument("-verbose", type=int, default=1)
     args = parser.parse_args()
+
+    import logging
+    logging.basicConfig(level=args.verbose)
+    for _ in ['parso.python.diff', 'parso.cache', 'parso.python.diff', 
+              'parso.cache', 'matplotlib.font_manager', 'tenpy.tools.cache', 
+              'tenpy.algorithms.mps_common', 'tenpy.linalg.lanczos', 'tenpy.tools.params']:
+        logging.getLogger(_).disabled = True
 
     np.random.seed(0)
     np.set_printoptions(threshold=np.inf, linewidth=np.inf, precision=10, suppress=True)
     
     J, K = round(args.J, 6), round(args.K, 6)
     lx, D, pbc, sweeps = args.lx, args.D, args.pbc, args.sweeps
+    job = args.job
     
     if pbc == 1:
         bc = 'periodic'
+        measure_E_shift = 5/3 * K * lx
     elif pbc == 0:
         bc = 'open'
+        measure_E_shift = 5/3 * K * (lx-1)
     else:
         raise "pbc must be 1(periodic) or 0(open)"
     
@@ -361,12 +417,12 @@ if __name__ == "__main__":
     path = homepath + '/data/' + "SO6DMRG_lx{}_J{}_K{}_pbc{}/".format(lx, J, K, pbc)
     if os.path.isdir(path) == False:
         os.mkdir(path)
-    fname = path+'psidmrg_lx{}_J{}_K{}_pbc{}_D{}_sweeps{}'.format(lx, J, K, pbc, D, sweeps)
+    fname = path+'psidmrg_job{}_lx{}_J{}_K{}_pbc{}_D{}_sweeps{}'.format(job, lx, J, K, pbc, D, sweeps)
 
     #not global variables anymore 240716
     #so6_generators, c_mn = get_opr_list()
     
-    model_paras = dict(cons_N=None, cons_S='U1', Lx = lx, bc=bc, J=J, K=K, D=D, sweeps=sweeps)
+    model_paras = dict(cons_N=None, cons_S='U1', Lx = lx, bc=bc, J=J, K=K, D=D, sweeps=sweeps, verbose=2)
     so6bbq = BBQJK(model_paras)
     
     if args.job == 'dmrg':
@@ -381,23 +437,46 @@ if __name__ == "__main__":
             
         #small measurements along with DMRG, not printing local operators anymore
         print("entropy", psi_dmrg.entanglement_entropy())
+
+    if args.job == 'dmrg2':
+        print("----------Start Job DMRG2----------")
+        print("----------Designed for the MPS point, the second time DMRG----------")
+        #load DMRG state
+        fname = path+'psidmrg_jobdmrg_lx{}_J{}_K{}_pbc{}_D{}_sweeps{}'.format(lx, J, K, pbc, D, sweeps)
+        with open(fname, 'rb') as f:
+            gs_dmrg = pickle.load(f)
+        print(fname, "state file loaded. ")
+
+        psi_dmrg, E = so6bbq.run_dmrg_orthogonal(gs1=gs_dmrg)
+        print("Second orthogonal DMRG results")
+        print("DMRG psi", psi_dmrg)
+        print("check orthogonal should be zero", psi_dmrg.overlap(gs_dmrg))
+        
+        #DMRG state saving
+        fname = path+'psidmrg_job{}_lx{}_J{}_K{}_pbc{}_D{}_sweeps{}'.format(job, lx, J, K, pbc, D, sweeps)
+        with open(fname, 'wb') as f:
+            pickle.dump(psi_dmrg, f)
+            
+        #small measurements along with DMRG, not printing local operators anymore
+        print("entropy", psi_dmrg.entanglement_entropy())
         
     if args.job == 'measure':
         print("----------Start Job Measure----------")
         #DMRG state loading
+        fname = path+'psidmrg_jobdmrg2_lx{}_J{}_K{}_pbc{}_D{}_sweeps{}'.format(lx, J, K, pbc, D, sweeps)
         with open(fname, 'rb') as f:
             psi_dmrg = pickle.load(f)
         print(psi_dmrg)
         
         print("-----energy-----")
         bbqmpo = so6bbq.calc_H_MPO()
-        print("The DMRG energy of psi is", bbqmpo.expectation_value(psi_dmrg))
+        print("The DMRG energy of psi is", bbqmpo.expectation_value(psi_dmrg)+measure_E_shift)
         
         print("-----entropy-----")
         print("The entanglement entropy of psi is", psi_dmrg.entanglement_entropy().tolist()) #printing tolist for preserving commas
 
         print("-----local operators expectations-----")
-        for i in {0,5,10,15,20}: #not printing 16 16 anymore 240716
+        for i in {0,5,10,20}: #not printing 16 16 anymore 240716
             print("i=",i)
             print('expectation value of lambda',i,'is', psi_dmrg.expectation_value("lambda"+str(i)).tolist())
 
