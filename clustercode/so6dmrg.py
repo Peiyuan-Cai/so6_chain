@@ -328,7 +328,10 @@ class BBQJK(CouplingModel):
         self.psidmrg = psidmrg
         return psidmrg, E+Econst
     
-    def run_dmrg_orthogonal(self, gs1, **kwargs):
+    def run_dmrg_orthogonal(self, gslist, **kwargs):
+        """
+        gslist is a list of states to projected
+        """
         mixer      = kwargs.get('mixer', True)
         chi_max    = kwargs.get('chi_max', self.D)
         max_E_err  = kwargs.get('max_E_err', 1e-10)
@@ -340,7 +343,7 @@ class BBQJK(CouplingModel):
                            max_sweeps=max_sweeps,
                            min_sweeps=min_sweeps,
                            verbose=2,
-                           orthogonal_to=[gs1])
+                           orthogonal_to=gslist)
 
         init = kwargs.get('init', None)
         if init is None:
@@ -447,7 +450,7 @@ if __name__ == "__main__":
             gs_dmrg = pickle.load(f)
         print(fname, "state file loaded. ")
 
-        psi_dmrg, E = so6bbq.run_dmrg_orthogonal(gs1=gs_dmrg)
+        psi_dmrg, E = so6bbq.run_dmrg_orthogonal(gslist=[gs_dmrg])
         print("Second orthogonal DMRG results")
         print("DMRG psi", psi_dmrg)
         print("check orthogonal should be zero", psi_dmrg.overlap(gs_dmrg))
