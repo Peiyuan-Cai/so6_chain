@@ -462,7 +462,7 @@ if __name__ == "__main__":
             
         #small measurements along with DMRG, not printing local operators anymore
         print("entropy", psi_dmrg.entanglement_entropy())
-        
+    
     if args.job == 'measure':
         print("----------Start Job Measure----------")
         #DMRG state loading
