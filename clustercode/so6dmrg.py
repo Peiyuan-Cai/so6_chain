@@ -495,3 +495,37 @@ if __name__ == "__main__":
             for n in range(36):
                 sqrd_spinspin_corr += so6bbq.c_mn[m,n] * psi_dmrg.correlation_function('lambda'+str(m), 'lambda'+str(n))
         print('sqrd spinspin correlation function is', sqrd_spinspin_corr)
+
+    if args.job == 'measure2':
+        print("----------Start Job Measure2----------")
+        print("----------Designed for the MPS point, measurement of the second time DMRG----------")
+        #DMRG state loading
+        fname = path+'psidmrg_jobdmrg2_lx{}_J{}_K{}_pbc{}_D{}_sweeps{}'.format(lx, J, K, pbc, D, sweeps)
+        with open(fname, 'rb') as f:
+            psi_dmrg = pickle.load(f)
+        print(psi_dmrg)
+        
+        print("-----energy-----")
+        bbqmpo = so6bbq.calc_H_MPO()
+        print("The DMRG energy of psi is", bbqmpo.expectation_value(psi_dmrg)+measure_E_shift)
+        
+        print("-----entropy-----")
+        print("The entanglement entropy of psi is", psi_dmrg.entanglement_entropy().tolist()) #printing tolist for preserving commas
+
+        print("-----local operators expectations-----")
+        for i in {0,5,10,20}: #not printing 16 16 anymore 240716
+            print("i=",i)
+            print('expectation value of lambda',i,'is', psi_dmrg.expectation_value("lambda"+str(i)).tolist())
+
+        print("-----spin-spin correlations-----")
+        spinspin_corr = np.zeros((lx,lx))
+        for (m,n) in {(0,0),(1,4),(4,1),(2,8),(8,2),(3,12),(12,3),(5,5),(6,9),(9,6),(7,13),(13,7),(10,10),(11,14),(14,11)}:
+            spinspin_corr += psi_dmrg.correlation_function('lambda'+str(m), 'lambda'+str(n))
+        print('spinspin correlation function is', spinspin_corr)
+        
+        print("-----squared spin-spin correlations-----")
+        sqrd_spinspin_corr = np.zeros((lx,lx))
+        for m in range(36):
+            for n in range(36):
+                sqrd_spinspin_corr += so6bbq.c_mn[m,n] * psi_dmrg.correlation_function('lambda'+str(m), 'lambda'+str(n))
+        print('sqrd spinspin correlation function is', sqrd_spinspin_corr)
