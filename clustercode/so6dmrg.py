@@ -1,7 +1,7 @@
 """
 SO6 chain DMRG code compact version for HPC use. 
 
-Puiyuen 240712-240716
+Puiyuen 240712-240726
 """
 import numpy as np
 import numpy.linalg as LA
@@ -529,3 +529,65 @@ if __name__ == "__main__":
             for n in range(36):
                 sqrd_spinspin_corr += so6bbq.c_mn[m,n] * psi_dmrg.correlation_function('lambda'+str(m), 'lambda'+str(n))
         print('sqrd spinspin correlation function is', sqrd_spinspin_corr)
+
+    if args.job == 'dimercheck':
+        print("----------Start job dimer check----------")
+        print("----------Designed for the MPS point, finding two dimerized ground states----------")
+        #DMRG state loading
+        fname = path+'psidmrg_jobdmrg_lx{}_J{}_K{}_pbc{}_D{}_sweeps{}'.format(lx, J, K, pbc, D, sweeps)
+        with open(fname, 'rb') as f:
+            psi1 = pickle.load(f)
+        fname = path+'psidmrg_jobdmrg2_lx{}_J{}_K{}_pbc{}_D{}_sweeps{}'.format(lx, J, K, pbc, D, sweeps)
+        with open(fname, 'rb') as f:
+            psi2 = pickle.load(f)
+
+        
+
+        print(psi1.overlap(psi2))
+        
+        from tenpy.networks import MPSEnvironment
+
+        env11 = MPSEnvironment(psi1, psi1)
+        env12 = MPSEnvironment(psi1, psi2)
+        env21 = MPSEnvironment(psi2, psi1)
+        env22 = MPSEnvironment(psi2, psi2)
+
+        envmatlist = dict()
+        for l in {0,5,10,20}:
+            envmatlist[(l)] = []
+            for i in range(lx-1):
+                envmat = np.zeros((2,2))
+                envmat[0,0] = env11.expectation_value_term([('lambda'+str(l), i), ('lambda'+str(l), i+1)])
+                envmat[0,1] = env12.expectation_value_term([('lambda'+str(l), i), ('lambda'+str(l), i+1)])
+                envmat[1,0] = env21.expectation_value_term([('lambda'+str(l), i), ('lambda'+str(l), i+1)])
+                envmat[1,1] = env22.expectation_value_term([('lambda'+str(l), i), ('lambda'+str(l), i+1)])
+                envmatlist[(l)].append(envmat)
+
+        for l in {0,5,10,20}:
+            for i in range(lx-1):
+                u,v = LA.eig(envmatlist[(l)][i])
+                if i%2==0: 
+                    print("l=",l,"i=",i,"even-odd envmat is \n",envmatlist[(l)][i],"eigvals",u)
+                else:
+                    print("l=",l,"i=",i,"odd-even envmat is \n",envmatlist[(l)][i],"eigvals",u)
+
+        phi1 = psi1.add(psi2,1,1)
+        phi1.canonical_form()
+        phi2 = psi1.add(psi2,1,-1)
+        phi2.canonical_form()
+        print("-----entropy-----")
+        print("The entanglement entropy of psi1+psi2 is", phi1.entanglement_entropy().tolist())
+        print("The entanglement entropy of psi1-psi2 is", phi2.entanglement_entropy().tolist())
+
+        def mps1_mpo_mps2(mps1, opr_string, mps2):
+            assert len(mps1._B) == len(opr_string) == len(mps2._B)
+            site = mps1.sites[0]
+            L = len(mps1._B)
+            temp = npc.tensordot(mps1._B[0].conj(), site.get_op(opr_string[0]), axes=('p*', 'p'))
+            left = npc.tensordot(temp, mps2._B[0], axes=('p*', 'p'))
+            for _ in range(1, L):
+                temp = npc.tensordot(mps1._B[_].conj(), site.get_op(opr_string[_]), axes=('p*', 'p'))
+                left = npc.tensordot(left, temp, axes=(['vR*'],["vL*"]))
+                left = npc.tensordot(left, mps2._B[_], axes=(['vR','p*'],['vL','p']))
+            value = left.to_ndarray()
+            return value.reshape(-1)[0]*mps1.norm*mps2.norm
