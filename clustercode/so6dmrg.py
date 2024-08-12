@@ -680,3 +680,13 @@ if __name__ == "__main__":
         ttpsi1.canonical_form()
         print("<psi1|TT|psi1>", psi1.overlap(ttpsi1))
         print("<psi2|TT|psi1>", psi2.overlap(ttpsi1))
+
+        tpsi2 = deepcopy(psi2)
+        tpsi2 = apply_mpo(transop, tpsi2)
+        tpsi2.canonical_form()
+        print("<psi1|T|psi2>", psi1.overlap(tpsi2))
+        print("<psi2|T|psi2>", psi2.overlap(tpsi2))
+        ttpsi2 = apply_mpo(transop,tpsi2)
+        ttpsi2.canonical_form()
+        print("<psi1|TT|psi2>", psi1.overlap(ttpsi2))
+        print("<psi2|TT|psi2>", psi2.overlap(ttpsi2))
