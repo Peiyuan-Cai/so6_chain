@@ -596,7 +596,6 @@ if __name__ == "__main__":
             
             bulk = npc.tensordot(right, left, axes=('p*','p'))
 
-            #why the ones in bt are located on 0,i,i
             if bc == 'pbc':
                 bt = npc.zeros([nleg, leg, leg.conj()], qtotal=zero_div, labels=['wL', 'p', 'p*',])
                 for _i in range( site.dim ):
