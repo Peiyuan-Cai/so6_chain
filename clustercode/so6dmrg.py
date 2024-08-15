@@ -618,6 +618,8 @@ if __name__ == "__main__":
                 3. i0, int, the mpo starts from i0-th site
             Output:
                 1. mps, tenpy.MPS object
+            
+            It's a ! type function, changing the input mps at the same time
             """
             L = len(mpo)
             for i in range( i0, i0+L ):
@@ -666,7 +668,7 @@ if __name__ == "__main__":
         print("The entanglement entropy of psi1+psi2 is", phi1.entanglement_entropy().tolist())
         print("The entanglement entropy of psi1-psi2 is", phi2.entanglement_entropy().tolist())
         """
-
+        
         site = psi1.sites[0]
         transop = trnslop_mpo(site, lx)
         tpsi1 = deepcopy(psi1)
@@ -690,3 +692,4 @@ if __name__ == "__main__":
         ttpsi2.canonical_form()
         print("<psi1|TT|psi2>", psi1.overlap(ttpsi2))
         print("<psi2|TT|psi2>", psi2.overlap(ttpsi2))
+        
