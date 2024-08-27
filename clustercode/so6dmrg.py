@@ -301,7 +301,10 @@ class BBQJK(CouplingModel):
         init = kwargs.get('init', None)
         if init is None:
             N = self.lat.N_sites
-            init = [0]*(N//6) + [1]*(N//6) + [2]*(N//6) + [3]*(N//6) + [4]*(N//6) + [5]*(N//6)
+            if N%6==0 and N>0:
+                init = [0]*(N//6) + [1]*(N//6) + [2]*(N//6) + [3]*(N//6) + [4]*(N//6) + [5]*(N//6)
+            else:
+                raise("Check the system size must be integral multiple of 6")
             np.random.shuffle(init)
             psiinit = MPS.from_product_state(self.lat.mps_sites(), init)
             psiinit.norm = 1
@@ -348,7 +351,10 @@ class BBQJK(CouplingModel):
         init = kwargs.get('init', None)
         if init is None:
             N = self.lat.N_sites
-            init = [0]*(N//6) + [1]*(N//6) + [2]*(N//6) + [3]*(N//6) + [4]*(N//6) + [5]*(N//6)
+            if N%6==0 and N>0:
+                init = [0]*(N//6) + [1]*(N//6) + [2]*(N//6) + [3]*(N//6) + [4]*(N//6) + [5]*(N//6)
+            else:
+                raise("Check the system size must be integral multiple of 6")
             np.random.shuffle(init)
             psiinit = MPS.from_product_state(self.lat.mps_sites(), init)
             psiinit.norm = 1
@@ -629,8 +635,6 @@ if __name__ == "__main__":
                 B.legs[B.get_leg_index('vR')] = B.get_leg('vR').to_LegCharge()
                 mps._B[i] = B#.itranspose(('vL', 'p', 'vR'))
             return mps
-
-        print(psi1.overlap(psi2))
         
         """
         from tenpy.networks import MPSEnvironment
@@ -668,27 +672,30 @@ if __name__ == "__main__":
         print("The entanglement entropy of psi1-psi2 is", phi2.entanglement_entropy().tolist())
         """
         
+        print(" ")
+        print("translational operator check")
+        print("<psi2|psi1>", psi2.overlap(psi1))
+        
         site = psi1.sites[0]
         transop = trnslop_mpo(site, lx)
         tpsi1 = deepcopy(psi1)
         tpsi1 = apply_mpo(transop,tpsi1)
         tpsi1.canonical_form()
-        print("<psi2|psi1>", psi2.overlap(psi1))
         print("<psi1|T|psi1>", psi1.overlap(tpsi1))
         print("<psi2|T|psi1>", psi2.overlap(tpsi1))
 
-        ttpsi1 = apply_mpo(transop,tpsi1)
-        ttpsi1.canonical_form()
-        print("<psi1|TT|psi1>", psi1.overlap(ttpsi1))
-        print("<psi2|TT|psi1>", psi2.overlap(ttpsi1))
+        #ttpsi1 = apply_mpo(transop,tpsi1)
+        #ttpsi1.canonical_form()
+        #print("<psi1|TT|psi1>", psi1.overlap(ttpsi1))
+        #print("<psi2|TT|psi1>", psi2.overlap(ttpsi1))
 
         tpsi2 = deepcopy(psi2)
         tpsi2 = apply_mpo(transop, tpsi2)
         tpsi2.canonical_form()
         print("<psi1|T|psi2>", psi1.overlap(tpsi2))
         print("<psi2|T|psi2>", psi2.overlap(tpsi2))
-        ttpsi2 = apply_mpo(transop,tpsi2)
-        ttpsi2.canonical_form()
-        print("<psi1|TT|psi2>", psi1.overlap(ttpsi2))
-        print("<psi2|TT|psi2>", psi2.overlap(ttpsi2))
+        #ttpsi2 = apply_mpo(transop,tpsi2)
+        #ttpsi2.canonical_form()
+        #print("<psi1|TT|psi2>", psi1.overlap(ttpsi2))
+        #print("<psi2|TT|psi2>", psi2.overlap(ttpsi2))
         
