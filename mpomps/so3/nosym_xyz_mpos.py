@@ -1,7 +1,9 @@
 """
-The MPO-MPS method for SO(3) spin1 chain, with no symmetry. 
+The MPO-MPS method for SO(3) BBQ model
 
 Puiyuen 2024.06.03-2024.06.11
+
+2024.08.27: this code does work. 
 """
 import matplotlib.pyplot as plt
 from tenpy.tools.params import asConfig
@@ -22,8 +24,24 @@ from bdgpack import *
 from tenpy.algorithms import dmrg
 from tenpy.models import AKLTChain
 
+
 class KitaevSingleChain():
     def __init__(self, chi, delta, lamb, L, bc='open'):
+        """
+        The Single Kitaev chain class. 
+        
+        The Hamiltonian is in the BdG form, the matrix is written under the Bogoliubov *QUASIHOLE* representation. 
+
+        Args:
+            chi (float): variational parameter $\chi$
+            delta (float): variational parameter $\delta$
+            lamb (float): variational parameter $\lambda$
+            L (int): Chain length
+            bc (str, optional): Boundary condition. Defaults to 'open'.
+            
+        Raises:
+            Check bc must be open or periodic: check your boundary condition input
+        """
         self.L = L
         self.chi = chi
         self.delta = delta
@@ -39,6 +57,11 @@ class KitaevSingleChain():
             raise "Check bc must be open or periodic"
         
     def calc_hamiltonian(self):
+        """
+        BdG Hamiltonian calculator. 
+
+        As a !type function. Calculate the $t$ and $d$ matrices, the real space Hamiltonian, the $V$ and $U$ matrices and the $M$=[[V,U^*],[U,V^*]] matrix. 
+        """
         L = self.L
         t = -self.chi
         d = self.delta
@@ -82,15 +105,18 @@ class KitaevSingleChain():
         #plt.show()
 
 class threeparton(Site):
-    """
-    The 3 in 1 parton site for MPO-MPS method, different from the one for DMRG
-    
-    local physical leg dimension = 8 = 2**3
-    empty, single occupancy of(x,y,z), double occupancy, full
-    
-    this site is a combination of 3 parton sites, and for the MPOS method, there is no need to define operators here
-    """
     def __init__(self, cons_N=None, cons_S=None):
+        """
+        The 3 in 1 parton site for MPO-MPS method, different from the one for DMRG
+    
+        local physical leg dimension = 8 = 2**3
+        empty, single occupancy of(x,y,z), double occupancy, full
+        
+        this site is a combination of 3 parton sites, and for the MPOS method, there is no need to define operators here
+        Args:
+            cons_N (str, optional): good quantum number: the parton number. Defaults to None.
+            cons_S (str, optional): good quantum number: the parton flavor. Defaults to None.
+        """
         self.conserve = [cons_N, cons_S]
         self.cons_N = cons_N
         self.cons_S = cons_S

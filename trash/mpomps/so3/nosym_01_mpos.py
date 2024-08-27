@@ -1,5 +1,7 @@
 """
-The MPO-MPS method for SO(3) spin1 chain, with Z(2) symmetry from spin up/dn and U(1) symmetry from x,y,z flavor. 
+The MPO-MPS method for SO(3) spin1 chain, with no symmetry. 
+
+20240827 this code doesn't work
 """
 import matplotlib.pyplot as plt
 from tenpy.tools.params import asConfig
@@ -94,11 +96,12 @@ class threeparton(Site):
         self.cons_S = cons_S
         if cons_N == 'N' and cons_S == 'xyz':
             chinfo = npc.ChargeInfo([1, 1], ['N', 'xyz'])
-            leg = npc.LegCharge.from_qflat(chinfo, [[0, 0], [1, -1], [1, 0], [1, 1], [2, -1], [2, 0], [2, 1], [3, 0]])
+            leg = npc.LegCharge.from_qflat(chinfo, [[0, 0], [1, 1], [1, -1], [1, 0], [2, 0], [2, 1], [2, -1], [3, 0]])
         elif cons_N == 'Z2' and cons_S == 'xyz':
             chinfo = npc.ChargeInfo([1, 1], ['N', 'xyz'])
-            leg = npc.LegCharge.from_qflat(chinfo, [[1, 0], [1, -1], [1, 0], [1, 1], [1, -1], [1, 0], [1, 1], [1, 0]])
+            leg = npc.LegCharge.from_qflat(chinfo, [[1, 0], [1, 1], [1, -1], [1, 0], [1, 0], [1, 1], [1, -1], [1, 0]])
         else:
+            print("No symmetry used in site 'threeparton'. ")
             leg = npc.LegCharge.from_trivial(8)
         
         names = ['empty', 'x', 'y', 'z', 'xy', 'zx', 'yz', 'xyz']
@@ -161,12 +164,12 @@ class MPOMPS():
         chinfo = self.site.leg.chinfo
         pleg = self.site.leg #physical leg
         
-        if xyz == -1: #v cxdag + u cz
-            qn = [0,-1]
-        elif xyz == 0: #v cydag + u cy
-            qn = [0, 0]
-        elif xyz == 1: #v czdag + u cx
+        if xyz == 1: #v cxdag + u cy
             qn = [0, 1]
+        elif xyz == 0: #v czdag + u cz
+            qn = [0, 0]
+        elif xyz == -1: #v cydag + u cx
+            qn = [0,-1]
         else:
             raise "quantum number of d mode i.e. xyz should be 1,0,-1"
         
@@ -183,14 +186,14 @@ class MPOMPS():
         
         t0 = npc.zeros(legs_first, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
         i = 0
-        if xyz == -1:
+        if xyz == 1:
             t0[0, 0, 1, 0] = v[0]; t0[0, 0, 4, 2] = v[0]; t0[0, 0, 5, 3] = v[0]; t0[0, 0, 7, 6] = v[0]; #v cxdag
-            t0[0, 0, 0, 3] = u[0]; t0[0, 0, 1, 5] = -u[0]; t0[0, 0, 2, 6] = -u[0]; t0[0, 0, 4, 7] = u[0]; #u F cz
-        elif xyz == 0:
-            t0[0, 0, 2, 0] = v[0]; t0[0, 0, 4, 1] = -v[0]; t0[0, 0, 6, 3] = v[0]; t0[0, 0, 7, 5] = -v[0]; #v cydag F
             t0[0, 0, 0, 2] = u[0]; t0[0, 0, 1, 4] = -u[0]; t0[0, 0, 3, 6] = u[0]; t0[0, 0, 5, 7] = -u[0]; #u F cy
-        elif xyz == 1:
+        elif xyz == 0:
             t0[0, 0, 3, 0] = v[0]; t0[0, 0, 5, 1] = -v[0]; t0[0, 0, 6, 2] = -v[0]; t0[0, 0, 7, 4] = v[0]; #v czdag F
+            t0[0, 0, 0, 3] = u[0]; t0[0, 0, 1, 5] = -u[0]; t0[0, 0, 2, 6] = -u[0]; t0[0, 0, 4, 7] = u[0]; #u F cz
+        elif xyz == -1:
+            t0[0, 0, 2, 0] = v[0]; t0[0, 0, 4, 1] = -v[0]; t0[0, 0, 6, 3] = v[0]; t0[0, 0, 7, 5] = -v[0]; #v cydag F
             t0[0, 0, 0, 1] = u[0]; t0[0, 0, 2, 4] = u[0]; t0[0, 0, 3, 5] = u[0]; t0[0, 0, 6, 7] = u[0]; #u cx
             
         t0[0, 1, 0, 0] = 1; t0[0, 1, 1, 1] = -1; t0[0, 1, 2, 2] = -1; t0[0, 1, 3, 3] = -1; 
@@ -201,14 +204,14 @@ class MPOMPS():
             ti = npc.zeros(legs_bulk, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
             ti[0,0,0,0] = 1; ti[0,0,1,1] = 1; ti[0,0,2,2] = 1; ti[0,0,3,3] = 1; 
             ti[0,0,4,4] = 1; ti[0,0,5,5] = 1; ti[0,0,6,6] = 1; ti[0,0,7,7] = 1; 
-            if xyz == -1:
+            if xyz == 1:
                 ti[1, 0, 1, 0] = v[i]; ti[1, 0, 4, 2] = v[i]; ti[1, 0, 5, 3] = v[i]; ti[1, 0, 7, 6] = v[i]; 
-                ti[1, 0, 0, 3] = u[i]; ti[1, 0, 1, 5] = -u[i]; ti[1, 0, 2, 6] = -u[i]; ti[1, 0, 4, 7] = u[i]; 
-            elif xyz == 0:
-                ti[1, 0, 2, 0] = v[i]; ti[1, 0, 4, 1] = -v[i]; ti[1, 0, 6, 3] = v[i]; ti[1, 0, 7, 5] = -v[i]; 
                 ti[1, 0, 0, 2] = u[i]; ti[1, 0, 1, 4] = -u[i]; ti[1, 0, 3, 6] = u[i]; ti[1, 0, 5, 7] = -u[i]; 
-            elif xyz == 1:
+            elif xyz == 0:
                 ti[1, 0, 3, 0] = v[i]; ti[1, 0, 5, 1] = -v[i]; ti[1, 0, 6, 2] = -v[i]; ti[1, 0, 7, 4] = v[i]; 
+                ti[1, 0, 0, 3] = u[i]; ti[1, 0, 1, 5] = -u[i]; ti[1, 0, 2, 6] = -u[i]; ti[1, 0, 4, 7] = u[i]; 
+            elif xyz == -1:
+                ti[1, 0, 2, 0] = v[i]; ti[1, 0, 4, 1] = -v[i]; ti[1, 0, 6, 3] = v[i]; ti[1, 0, 7, 5] = -v[i]; 
                 ti[1, 0, 0, 1] = u[i]; ti[1, 0, 2, 4] = u[i]; ti[1, 0, 3, 5] = u[i]; ti[1, 0, 6, 7] = u[i]; 
             ti[1, 1, 0, 0] = 1; ti[1, 1, 1, 1] = -1; ti[1, 1, 2, 2] = -1; ti[1, 1, 3, 3] = -1; 
             ti[1, 1, 4, 4] = 1; ti[1, 1, 5, 5] = 1; ti[1, 1, 6, 6] = 1; ti[1, 1, 7, 7] = -1; 
@@ -218,46 +221,92 @@ class MPOMPS():
         tL = npc.zeros(legs_last, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
         tL[0,0,0,0] = 1; tL[0,0,1,1] = 1; tL[0,0,2,2] = 1; tL[0,0,3,3] = 1; 
         tL[0,0,4,4] = 1; tL[0,0,5,5] = 1; tL[0,0,6,6] = 1; tL[0,0,7,7] = 1; 
-        if xyz == -1:
+        if xyz == 1:
             tL[1, 0, 1, 0] = v[i]; tL[1, 0, 4, 2] = v[i]; tL[1, 0, 5, 3] = v[i]; tL[1, 0, 7, 6] = v[i]; 
-            tL[1, 0, 0, 3] = u[i]; tL[1, 0, 1, 5] = -u[i]; tL[1, 0, 2, 6] = -u[i]; tL[1, 0, 4, 7] = u[i]; 
-        elif xyz == 0:
-            tL[1, 0, 2, 0] = v[i]; tL[1, 0, 4, 1] = -v[i]; tL[1, 0, 6, 3] = v[i]; tL[1, 0, 7, 5] = -v[i]; 
             tL[1, 0, 0, 2] = u[i]; tL[1, 0, 1, 4] = -u[i]; tL[1, 0, 3, 6] = u[i]; tL[1, 0, 5, 7] = -u[i]; 
-        elif xyz == 1:
+        elif xyz == 0:
             tL[1, 0, 3, 0] = v[i]; tL[1, 0, 5, 1] = -v[i]; tL[1, 0, 6, 2] = -v[i]; tL[1, 0, 7, 4] = v[i]; 
+            tL[1, 0, 0, 3] = u[i]; tL[1, 0, 1, 5] = -u[i]; tL[1, 0, 2, 6] = -u[i]; tL[1, 0, 4, 7] = u[i]; 
+        elif xyz == -1:
+            tL[1, 0, 2, 0] = v[i]; tL[1, 0, 4, 1] = -v[i]; tL[1, 0, 6, 3] = v[i]; tL[1, 0, 7, 5] = -v[i]; 
             tL[1, 0, 0, 1] = u[i]; tL[1, 0, 2, 4] = u[i]; tL[1, 0, 3, 5] = u[i]; tL[1, 0, 6, 7] = u[i]; 
         mpo.append(tL)
         
         return mpo
-    
-    def mpomps_step_3times(self, m):
-        """
-        m = 1,2,3,...,3L
-        run this function once for applying mpo -1, 0, 1 on psi, totally 3 times
-        """
-        vm = self._V[:,m]
-        um = self._U[:,m]
-        xyzlist = [-1, 0, 1]
-        mps = self.psi
-        for xyz in xyzlist:
-            print("applying the {} mode".format(xyz))
-            mpo = self.get_mpo_Z2U1(vm, um, xyz)
-            for i in range(self.L):
-                B = npc.tensordot(mps.get_B(i,'B'), mpo[i], axes=('p','p*'))
-                B = B.combine_legs([['wL', 'vL'], ['wR', 'vR']], qconj=[+1, -1])
-                B.ireplace_labels(['(wL.vL)', '(wR.vR)'], ['vL', 'vR'])
-                B.legs[B.get_leg_index('vL')] = B.get_leg('vL').to_LegCharge()
-                B.legs[B.get_leg_index('vR')] = B.get_leg('vR').to_LegCharge()
-                mps._B[i] = B
-            mps.compress_svd(self.trunc_params)
-        return mps
+
+    def get_mpo_trivial(self, v, u, xyz):
+        chinfo = self.site.leg.chinfo
+        pleg = self.site.leg #physical leg
+
+        firstleg = npc.LegCharge.from_trivial(1)
+        lastleg = npc.LegCharge.from_trivial(1)
+        bulkleg = npc.LegCharge.from_trivial(2)
+        #legs arrange in order 'wL', 'wR', 'p', 'p*'
+        legs_first = [firstleg, bulkleg.conj(), pleg, pleg.conj()]
+        legs_bulk = [bulkleg, bulkleg.conj(), pleg, pleg.conj()]
+        legs_last = [bulkleg, lastleg, pleg, pleg.conj()]
+        
+        mpo = []
+        L = self.L
+        
+        t0 = npc.zeros(legs_first, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+        i = 0
+        if xyz == 1:
+            t0[0, 0, 1, 0] = v[0]; t0[0, 0, 4, 2] = v[0]; t0[0, 0, 5, 3] = v[0]; t0[0, 0, 7, 6] = v[0]; #v cxdag
+            t0[0, 0, 0, 1] = u[0]; t0[0, 0, 2, 4] = u[0]; t0[0, 0, 3, 5] = u[0]; t0[0, 0, 6, 7] = u[0]; #u cx
+        elif xyz == 0:
+            t0[0, 0, 3, 0] = v[0]; t0[0, 0, 5, 1] = -v[0]; t0[0, 0, 6, 2] = -v[0]; t0[0, 0, 7, 4] = v[0]; #v czdag F
+            t0[0, 0, 0, 3] = u[0]; t0[0, 0, 1, 5] = -u[0]; t0[0, 0, 2, 6] = -u[0]; t0[0, 0, 4, 7] = u[0]; #u F cz
+        elif xyz == -1:
+            t0[0, 0, 2, 0] = v[0]; t0[0, 0, 4, 1] = -v[0]; t0[0, 0, 6, 3] = v[0]; t0[0, 0, 7, 5] = -v[0]; #v cydag F
+            t0[0, 0, 0, 2] = u[0]; t0[0, 0, 1, 4] = -u[0]; t0[0, 0, 3, 6] = u[0]; t0[0, 0, 5, 7] = -u[0]; #u F cy
+            
+        t0[0, 1, 0, 0] = 1; t0[0, 1, 1, 1] = -1; t0[0, 1, 2, 2] = -1; t0[0, 1, 3, 3] = -1; 
+        t0[0, 1, 4, 4] = 1; t0[0, 1, 5, 5] = 1; t0[0, 1, 6, 6] = 1; t0[0, 1, 7, 7] = -1; 
+        mpo.append(t0)
+        
+        for i in range(1,L-1):
+            ti = npc.zeros(legs_bulk, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+            ti[0,0,0,0] = 1; ti[0,0,1,1] = 1; ti[0,0,2,2] = 1; ti[0,0,3,3] = 1; 
+            ti[0,0,4,4] = 1; ti[0,0,5,5] = 1; ti[0,0,6,6] = 1; ti[0,0,7,7] = 1; 
+            if xyz == 1:
+                ti[1, 0, 1, 0] = v[i]; ti[1, 0, 4, 2] = v[i]; ti[1, 0, 5, 3] = v[i]; ti[1, 0, 7, 6] = v[i]; 
+                ti[1, 0, 0, 1] = u[i]; ti[1, 0, 2, 4] = u[i]; ti[1, 0, 3, 5] = u[i]; ti[1, 0, 6, 7] = u[i]; 
+            elif xyz == 0:
+                ti[1, 0, 3, 0] = v[i]; ti[1, 0, 5, 1] = -v[i]; ti[1, 0, 6, 2] = -v[i]; ti[1, 0, 7, 4] = v[i]; 
+                ti[1, 0, 0, 3] = u[i]; ti[1, 0, 1, 5] = -u[i]; ti[1, 0, 2, 6] = -u[i]; ti[1, 0, 4, 7] = u[i]; 
+            elif xyz == -1:
+                ti[1, 0, 2, 0] = v[i]; ti[1, 0, 4, 1] = -v[i]; ti[1, 0, 6, 3] = v[i]; ti[1, 0, 7, 5] = -v[i]; 
+                ti[1, 0, 0, 2] = u[i]; ti[1, 0, 1, 4] = -u[i]; ti[1, 0, 3, 6] = u[i]; ti[1, 0, 5, 7] = -u[i]; 
+            ti[1, 1, 0, 0] = 1; ti[1, 1, 1, 1] = -1; ti[1, 1, 2, 2] = -1; ti[1, 1, 3, 3] = -1; 
+            ti[1, 1, 4, 4] = 1; ti[1, 1, 5, 5] = 1; ti[1, 1, 6, 6] = 1; ti[1, 1, 7, 7] = -1; 
+            mpo.append(ti)
+                
+        i = L-1
+        tL = npc.zeros(legs_last, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+        tL[0,0,0,0] = 1; tL[0,0,1,1] = 1; tL[0,0,2,2] = 1; tL[0,0,3,3] = 1; 
+        tL[0,0,4,4] = 1; tL[0,0,5,5] = 1; tL[0,0,6,6] = 1; tL[0,0,7,7] = 1; 
+        if xyz == 1:
+            tL[1, 0, 1, 0] = v[i]; tL[1, 0, 4, 2] = v[i]; tL[1, 0, 5, 3] = v[i]; tL[1, 0, 7, 6] = v[i]; 
+            tL[1, 0, 0, 1] = u[i]; tL[1, 0, 2, 4] = u[i]; tL[1, 0, 3, 5] = u[i]; tL[1, 0, 6, 7] = u[i]; 
+        elif xyz == 0:
+            tL[1, 0, 3, 0] = v[i]; tL[1, 0, 5, 1] = -v[i]; tL[1, 0, 6, 2] = -v[i]; tL[1, 0, 7, 4] = v[i]; 
+            tL[1, 0, 0, 3] = u[i]; tL[1, 0, 1, 5] = -u[i]; tL[1, 0, 2, 6] = -u[i]; tL[1, 0, 4, 7] = u[i]; 
+        elif xyz == -1:
+            tL[1, 0, 2, 0] = v[i]; tL[1, 0, 4, 1] = -v[i]; tL[1, 0, 6, 3] = v[i]; tL[1, 0, 7, 5] = -v[i];    
+            tL[1, 0, 0, 2] = u[i]; tL[1, 0, 1, 4] = -u[i]; tL[1, 0, 3, 6] = u[i]; tL[1, 0, 5, 7] = -u[i]; 
+        mpo.append(tL)
+        
+        return mpo
     
     def mpomps_step_1time(self, m, xyz):
         vm = self._V[:,m]
         um = self._U[:,m]
         mps = self.psi
-        mpo = self.get_mpo_Z2U1(vm, um, xyz)
+        if self.cons_N==None and self.cons_S==None:
+            mpo = self.get_mpo_trivial(vm, um, xyz)
+        elif self.cons_N=='Z2' and self.cons_S=='xyz':
+            mpo = self.get_mpo_Z2U1(vm, um, xyz)
         halflength = self.L//2
         for i in range(self.L):
             B = npc.tensordot(mps.get_B(i,'B'), mpo[i], axes=('p','p*'))
@@ -291,18 +340,18 @@ class Spin1(Site):
     """
     Customized Spin-1 site, local operators are generators of SU(3)
     """
-    def __init__(self, cons_N=None):
-        cons_S = 'xyz'
+    def __init__(self, cons_N=None, cons_S=None):
         self.conserve = [cons_N, cons_S]
         self.cons_N = cons_N
         self.cons_S = cons_S
         if cons_N is None and cons_S == 'xyz':
-            chinfo = npc.ChargeInfo([1, 1], ['N', 'xyz'])
-            leg = npc.LegCharge.from_qflat(chinfo, [[1, -1], [1, 0], [1, +1]])
-        elif cons_N == 'N' and cons_S == 'xyz':
-            chinfo = npc.ChargeInfo([1, 1], ['N', 'xyz'])
-            leg = npc.LegCharge.from_qflat(chinfo, [[1, -1], [1, 0], [1, +1]])
+            chinfo = npc.ChargeInfo([1, 1], ['Z2', 'xyz'])
+            leg = npc.LegCharge.from_qflat(chinfo, [[1, 1], [1, -1], [1, 0]])
+        elif cons_N == 'Z2' and cons_S == 'xyz':
+            chinfo = npc.ChargeInfo([1, 1], ['Z2', 'xyz'])
+            leg = npc.LegCharge.from_qflat(chinfo, [[1, 1], [1, -1], [1, 0]])
         else:
+            print("No symmetry used in site 'Spin1'. ")
             leg = npc.LegCharge.from_trivial(3)
 
         JW = np.diag([-1, -1, -1])
@@ -341,12 +390,15 @@ class Spin1(Site):
         names = ['x', 'y', 'z']
         Site.__init__(self, leg, names, **ops)
 
+    def __repr__(self):
+        return "site for spin-1 in trs basis with conserve = {}".format(["N", self.cons_S])
+
 class BBQJK(CouplingModel):
     def __init__(self, model_params):
         print(model_params)
         model_params = asConfig(model_params, self.__class__.__name__)
         self.model_params = model_params
-        self.Lx = model_params.get('Lx', 10)
+        self.Lx = model_params.get('Lx', 12)
         self.S = model_params.get('S', 1)
         self.bc = model_params.get('bc', 'periodic')
         self.J = model_params.get('J', 1)
@@ -355,7 +407,7 @@ class BBQJK(CouplingModel):
         conserve = model_params.get('conserve', 'parity')
         self.verbose = model_params.get('verbose', 2)
         
-        site = Spin1(cons_N=None)
+        site = Spin1(cons_N=None, cons_S=None)
         self.sites = [site]*self.Lx
         self.lat = Chain(self.Lx, site, bc=bc)
         CouplingModel.__init__(self, self.lat, explicit_plus_hc=False)
@@ -381,16 +433,18 @@ class BBQJK(CouplingModel):
             self.add_coupling_term(J,  i0, i1, "Syx", "Sxy")
             self.add_coupling_term(J,  i0, i1, "Syz", "Szy")
             self.add_coupling_term(J,  i0, i1, "Szy", "Syz")
-            self.add_coupling_term(K, i0, i1, "Szx", "Sxz")
-            self.add_coupling_term(K, i0, i1, "Sxz", "Szx")
-            self.add_coupling_term(J-K,  i0, i1, "Sxy", "Szy")
-            self.add_coupling_term(J-K,  i0, i1, "Syx", "Syz")
-            self.add_coupling_term(J-K,  i0, i1, "Syz", "Syx")
-            self.add_coupling_term(J-K,  i0, i1, "Szy", "Sxy")
-            self.add_coupling_term((J+K)/4,  i0, i1, "Q1", "Q1")
-            self.add_coupling_term((J-K)*np.sqrt(3)/4,  i0, i1, "Q1", "Q2")
-            self.add_coupling_term((J-K)*np.sqrt(3)/4,  i0, i1, "Q2", "Q1")
-            self.add_coupling_term((J*3-K)/4,  i0, i1, "Q2", "Q2")
+            self.add_coupling_term(J,  i0, i1, "Szx", "Sxz")
+            self.add_coupling_term(J,  i0, i1, "Sxz", "Szx")
+
+            self.add_coupling_term(K-J,  i0, i1, "Sxy", "Sxy")
+            self.add_coupling_term(K-J,  i0, i1, "Sxz", "Sxz")
+            self.add_coupling_term(K-J,  i0, i1, "Syx", "Syx")
+            self.add_coupling_term(K-J,  i0, i1, "Syz", "Syz")
+            self.add_coupling_term(K-J,  i0, i1, "Szx", "Szx")
+            self.add_coupling_term(K-J,  i0, i1, "Szy", "Szy")
+
+            self.add_coupling_term(K/2,  i0, i1, "Q1", "Q1")
+            self.add_coupling_term(K/2,  i0, i1, "Q2", "Q2")
             #self.add_coupling_term(K*4/3, i0, i1, "Id", "Id") #this is a constant term
     
     def run_dmrg(self, **kwargs):
@@ -444,19 +498,19 @@ def GutzwillerProjection2Spin1(psi):
     cons_N, cons_S = threeparton_site.conserve
     threeparton_leg = threeparton_site.leg
 
-    spin1_site = Spin1(cons_N='N')
+    spin1_site = Spin1(cons_N=cons_N, cons_S=None)
     spin1_leg = spin1_site.leg
 
     #the projection shouldn't change the qns
     if cons_N == 'Z2' and cons_S == 'xyz':
         qtotal = [0, 0]
     else:
-        qtotal = [0]
+        qtotal = None
 
     projector = npc.zeros([spin1_leg, threeparton_leg.conj()], qtotal=qtotal, labels=['p','p*'], dtype=psi.dtype)
-    projector[0,1] = 1 #single occupied x parton
-    projector[1,2] = 1 #y parton
-    projector[2,3] = 1 #z parton
+    projector[0,1] = 1 #x parton -> 1
+    projector[1,2] = 1 #y parton -> -1
+    projector[2,3] = 1 #z parton -> 0
     L = psi.L
     gp_psi_spin1 = MPS.from_product_state([spin1_site]*L, [0]*L)
     for i in range(L):
@@ -538,7 +592,7 @@ if __name__ == "__main__":
     wv, wu = Wannier_Z2(vmat.T, umat.T)
 
     print("----------Z2U1 MPO-MPS method: dm----------")
-    params_mpompsz2u1 = dict(cons_N="Z2", cons_S='xyz', trunc_params=dict(chi_max=D))
+    params_mpompsz2u1 = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=D))
     mpos = MPOMPS(vmat, umat, **params_mpompsz2u1)
     mpos.run()
 
@@ -547,7 +601,7 @@ if __name__ == "__main__":
     gppsi = GutzwillerProjection2Spin1(psi1)
 
     print("----------Z2U1 MPO-MPS method: MLWO----------")
-    params_mpompsz2u1 = dict(cons_N="Z2", cons_S='xyz', trunc_params=dict(chi_max=D))
+    params_mpompsz2u1 = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=D))
     mpos = MPOMPS(wv, wu, **params_mpompsz2u1)
     mpos.run()
 
@@ -558,13 +612,8 @@ if __name__ == "__main__":
     print("----------SU(3) Spin1 model DMRG---------")
     su3dmrgmodel = BBQJK(model_params)
     #sites2 = su3dmrgmodel.sites
-    sites2 = [Spin1(cons_N=None)] * lx
-    psi2 = MPS.from_product_state(sites2, [1]*lx, "finite")
-    #psi2.norm = 1
-    psi2.canonical_form()
-    dmrg_params2 = dict(mixer=True, max_E_err=1.e-12 , max_chi = 20)
-    eng2 = dmrg.TwoSiteDMRGEngine(psi2, su3dmrgmodel, dmrg_params2)
-    E2, psi2 = eng2.run()
+    sites2 = [Spin1(cons_N=None, cons_S=None)] * lx
+    psi2, E2 = su3dmrgmodel.run_dmrg()
     print("SU3 site DMRG results")
     print("psi2 after DMRG is", psi2)
     print("E2 is", E2 + Econst)
