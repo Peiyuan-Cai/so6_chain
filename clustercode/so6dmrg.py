@@ -210,7 +210,7 @@ class SO6Site(Site):
         elif cons_N == 'N' and cons_S == 'U1':
             chinfo = npc.ChargeInfo([1, 1, 1, 1], ['FakeN', 'P', 'Q', 'R'])
             leg = npc.LegCharge.from_qflat(chinfo, [[1, -1, -2, 0], [1, -1, 1, 1], [1, -1, 1, -1], [1, 1, -1, 1], [1, 1, -1, -1], [1, 1, 2, 0]])
-        elif cons_N == 'N' and cons_S == 'None':
+        elif cons_N == 'N' and cons_S == None:
             chinfo = npc.ChargeInfo([2], ['FakeN'])
             leg = npc.LegCharge.from_qflat(chinfo, [[1],[1],[1],[1],[1],[1]])
         else:
