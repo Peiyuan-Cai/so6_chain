@@ -18,6 +18,7 @@ import itertools
 import matplotlib.pyplot as plt
 import numpy as np
 from bdgpack import *
+from so6bbqham import *
 from tenpy.algorithms import dmrg
 import logging
 logging.getLogger('parso.python.diff').disabled = True
@@ -424,7 +425,7 @@ if __name__ == "__main__":
     parser.add_argument("-D", type=int, default=10)
     parser.add_argument("-pbc", type=int, default=-1)
     parser.add_argument("-J", type=float, default=1.)
-    parser.add_argument("-K", type=float, default=1/3)
+    parser.add_argument("-K", type=float, default=1/6)
     args = parser.parse_args()
     
     np.random.seed(0)
@@ -439,10 +440,10 @@ if __name__ == "__main__":
     J = args.J
     K = args.K
     
-    if pbc == 1 or -1:
-        Econst = (4/3) * K * lx
+    if pbc == 1 or pbc==-1:
+        Econst = (5/3) * K * lx
     elif pbc == 0:
-        Econst = (4/3) * K * (lx-1)
+        Econst = (5/3) * K * (lx-1)
     
     print("----------Build single Kitaev chain Hamiltonian----------")
     singlechain = KitaevSingleChain(chi, delta, lamb, lx, pbc)
@@ -452,11 +453,6 @@ if __name__ == "__main__":
 
     print("----------Build MLWO----------")
     wv, wu = Wannier_Z2(vmat.T, umat.T)
-
-    print("----------Z2U1 MPO-MPS method: dm----------")
-    params_mpompsz2u1 = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=D))
-    mpos = MPOMPS(vmat, umat, **params_mpompsz2u1)
-    mpos.run()
 
     print("----------Z2U1 MPO-MPS method: MLWO----------")
     params_mpompsz2u1 = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=D))
