@@ -145,7 +145,6 @@ def adaggermatrix(flavor, basis):
                 
                 if len(setL)-len(setR)==1 and len(listdiff) == 1 and listdiff[0] == flavor:
                     adaggermatrixform[l,r] = 1
-                    print('l=',setL,'r=',setR)
     return adaggermatrixform
 
 def fmatrix(flavor, basis):
@@ -251,3 +250,215 @@ class sixparton(Site):
                    cu=cu, cv=cv, cw=cw, cx=cx, cy=cy, cz=cz)
         
         Site.__init__(self, leg, names, **ops)
+        
+class MPOMPS():
+    def __init__(self, v, u, **kwargs):
+        self.cons_N = kwargs.get("cons_N", None)
+        self.cons_S = kwargs.get("cons_S", None)
+        self.trunc_params = kwargs.get("trunc_params", dict(chi_max=20) )
+        
+        assert v.ndim == 2
+        self._V = v
+        self._U = u
+        assert self._U.shape == self._V.shape
+        self.projection_type = kwargs.get("projection_type", "Gutz")
+
+        self.L = self.Llat = u.shape[0] #the length of real sites
+        
+        self.site = sixparton(self.cons_N, self.cons_S)
+        self.init_mps()
+    
+    def init_mps(self, init=None):
+        L = self.L
+        if init == None:
+            init = [0] * L #all empty
+        site = self.site
+        self.init_psi = MPS.from_product_state([site]*L, init)
+        self.psi = self.init_psi.copy()
+        self.n_omode = 0
+        return self.psi
+    
+    def get_mpo_trivial(self, v, u, flavor):
+        chinfo = self.site.leg.chinfo
+        pleg = self.site.leg #physical leg
+
+        firstleg = npc.LegCharge.from_trivial(1)
+        lastleg = npc.LegCharge.from_trivial(1)
+        bulkleg = npc.LegCharge.from_trivial(2)
+        #legs arrange in order 'wL', 'wR', 'p', 'p*'
+        legs_first = [firstleg, bulkleg.conj(), pleg, pleg.conj()]
+        legs_bulk = [bulkleg, bulkleg.conj(), pleg, pleg.conj()]
+        legs_last = [bulkleg, lastleg, pleg, pleg.conj()]
+        
+        mpo = []
+        L = self.L
+        
+        t0 = npc.zeros(legs_first, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+        i = 0
+        if flavor == 'u':
+            t0[0, 0, :, :] = v[0]*self.site.get_op('cudag') + u[0]*self.site.get_op('cu')
+        elif flavor == 'v':
+            t0[0, 0, :, :] = v[0]*self.site.get_op('cvdag') + u[0]*self.site.get_op('cv')
+        elif flavor == 'w':
+            t0[0, 0, :, :] = v[0]*self.site.get_op('cwdag') + u[0]*self.site.get_op('cw')
+        elif flavor == 'x':
+            t0[0, 0, :, :] = v[0]*self.site.get_op('cxdag') + u[0]*self.site.get_op('cx')
+        elif flavor == 'y':
+            t0[0, 0, :, :] = v[0]*self.site.get_op('cydag') + u[0]*self.site.get_op('cy')
+        elif flavor == 'z':
+            t0[0, 0, :, :] = v[0]*self.site.get_op('czdag') + u[0]*self.site.get_op('cz')
+            
+        t0[0, 1, :, :] = self.site.get_op('JW')
+        mpo.append(t0)
+        
+        for i in range(1,L-1):
+            ti = npc.zeros(legs_bulk, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+            ti[0,0,:,:] = self.site.get_op('id64')
+            if flavor == 'u':
+                ti[1, 0, :, :] = v[i]*self.site.get_op('cudag') + u[i]*self.site.get_op('cu')
+            elif flavor == 'v':
+                ti[1, 0, :, :] = v[i]*self.site.get_op('cvdag') + u[i]*self.site.get_op('cv')
+            elif flavor == 'w':
+                ti[1, 0, :, :] = v[i]*self.site.get_op('cwdag') + u[i]*self.site.get_op('cw')
+            elif flavor == 'x':
+                ti[1, 0, :, :] = v[i]*self.site.get_op('cxdag') + u[i]*self.site.get_op('cx')
+            elif flavor == 'y':
+                ti[1, 0, :, :] = v[i]*self.site.get_op('cydag') + u[i]*self.site.get_op('cy')
+            elif flavor == 'z':
+                ti[1, 0, :, :] = v[i]*self.site.get_op('czdag') + u[i]*self.site.get_op('cz')
+            ti[1, 1, :, :] = self.site.get_op('JW')
+            mpo.append(ti)
+                
+        i = L-1
+        tL = npc.zeros(legs_last, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+        tL[0,0,:,:] = self.site.get_op('id64')
+        if flavor == 'u':
+            tL[1, 0, :, :] = v[i]*self.site.get_op('cudag') + u[i]*self.site.get_op('cu')
+        elif flavor == 'v':
+            tL[1, 0, :, :] = v[i]*self.site.get_op('cvdag') + u[i]*self.site.get_op('cv')
+        elif flavor == 'w':
+            tL[1, 0, :, :] = v[i]*self.site.get_op('cwdag') + u[i]*self.site.get_op('cw')
+        elif flavor == 'x':
+            tL[1, 0, :, :] = v[i]*self.site.get_op('cxdag') + u[i]*self.site.get_op('cx')
+        elif flavor == 'y':
+            tL[1, 0, :, :] = v[i]*self.site.get_op('cydag') + u[i]*self.site.get_op('cy')
+        elif flavor == 'z':
+            tL[1, 0, :, :] = v[i]*self.site.get_op('czdag') + u[i]*self.site.get_op('cz')
+        mpo.append(tL)
+        
+        return mpo
+    
+    def mpomps_step_1time(self, m, uvwxyz):
+        vm = self._V[:,m]
+        um = self._U[:,m]
+        mps = self.psi
+        if self.cons_N==None and self.cons_S==None:
+            mpo = self.get_mpo_trivial(vm, um, uvwxyz)
+        elif self.cons_N=='Z2' and self.cons_S=='flavor':
+            mpo = self.get_mpo_Z2U1(vm, um, uvwxyz)
+        else:
+            raise "Symmetry set of N and S is not allowed. "
+        halflength = self.L//2
+        for i in range(self.L):
+            B = npc.tensordot(mps.get_B(i,'B'), mpo[i], axes=('p','p*'))
+            B = B.combine_legs([['wL', 'vL'], ['wR', 'vR']], qconj=[+1, -1])
+            B.ireplace_labels(['(wL.vL)', '(wR.vR)'], ['vL', 'vR'])
+            B.legs[B.get_leg_index('vL')] = B.get_leg('vL').to_LegCharge()
+            B.legs[B.get_leg_index('vR')] = B.get_leg('vR').to_LegCharge()
+            mps._B[i] = B
+        err = mps.compress_svd(self.trunc_params)
+        return err, mps
+    
+    def run(self, init=None):
+        self.fidelity = 1
+        if self.n_omode > 0:
+            print("initialize the mpo-mps calculation mps")
+            self.init_mps(init=init)
+            self.n_omode = 0
+        nmode = self._U.shape[0]
+        print("MPO-MPS application start")
+        
+        flavorlist = ['u','v','w','x','y','z']
+        for m in range(nmode):
+            for flavor in flavorlist:
+                err, self.psi = self.mpomps_step_1time(m, flavor)
+                self.fidelity *= 1-err.eps
+                self.chi_max = np.max(self.psi.chi)
+                print( "applied the {}-th {} mode, the fidelity is {}, the largest bond dimension is {}. ".format( self.n_omode, flavor, self.fidelity, self.chi_max) )
+            self.n_omode += 1
+
+'''
+------------------------------------------------------Extra functions---------------------------------------------
+'''
+def Wannier_Z2(g1, g2, N=1):
+    norbital, n = g1.shape        
+    position = np.power( list(range(1,n+1)), N)
+    position = np.diag(position) 
+    position12 = g1.conj() @ position @ g1.T + g2.conj() @ position @ g2.T
+    position12 = (position12 + position12.T.conj())/2.
+    D, U = np.linalg.eigh(position12)
+    index = np.argsort(D)
+    print('The MLWOs locate at', D)
+    U = U[:,index]
+    g3 = U.T @ g1
+    g4 = U.T @ g2
+    index1 = np.zeros(norbital, dtype=int)
+    if norbital%2 == 0:
+        index1[0:(norbital):2] = np.ceil( range(0, norbital//2) ).astype(int)
+        index1[1:(norbital):2] = np.ceil( range(norbital-1, norbital//2-1, -1) ).astype(int)
+    else:
+        index1[0:(norbital):2] = np.ceil( range(0, norbital//2+1) ).astype(int)
+        index1[1:(norbital):2] = np.ceil( range(norbital-1, norbital//2, -1) ).astype(int)
+    g3 = g3[index1,:]
+    g4 = g4[index1,:]
+    return g3.T, g4.T
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-lx", type=int, default=6)
+    parser.add_argument("-theta", type=float, default=np.arctan(1/3))
+    parser.add_argument("-chi", type=float, default=1.)
+    parser.add_argument("-delta", type=float, default=1.)
+    parser.add_argument("-lamb", type=float, default=0.)
+    parser.add_argument("-D", type=int, default=10)
+    parser.add_argument("-pbc", type=int, default=-1)
+    parser.add_argument("-J", type=float, default=1.)
+    parser.add_argument("-K", type=float, default=1/3)
+    args = parser.parse_args()
+    
+    np.random.seed(0)
+    
+    theta = args.theta
+    chi = args.chi
+    delta = args.delta
+    lamb = args.lamb
+    lx = args.lx
+    pbc = args.pbc
+    D = args.D
+    J = args.J
+    K = args.K
+    
+    if pbc == 1 or -1:
+        Econst = (4/3) * K * lx
+    elif pbc == 0:
+        Econst = (4/3) * K * (lx-1)
+    
+    print("----------Build single Kitaev chain Hamiltonian----------")
+    singlechain = KitaevSingleChain(chi, delta, lamb, lx, pbc)
+    singlechain.calc_hamiltonian()
+    vmat = singlechain.V
+    umat = singlechain.U
+
+    print("----------Build MLWO----------")
+    wv, wu = Wannier_Z2(vmat.T, umat.T)
+
+    print("----------Z2U1 MPO-MPS method: dm----------")
+    params_mpompsz2u1 = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=D))
+    mpos = MPOMPS(vmat, umat, **params_mpompsz2u1)
+    mpos.run()
+
+    print("----------Z2U1 MPO-MPS method: MLWO----------")
+    params_mpompsz2u1 = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=D))
+    mpos = MPOMPS(wv, wu, **params_mpompsz2u1)
+    mpos.run()
