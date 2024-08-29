@@ -132,12 +132,17 @@ class threeparton(Site):
         
         names = ['empty', 'x', 'y', 'z', 'xy', 'zx', 'yz', 'xyz']
         
-        JW = np.diag([1,-1,-1,-1,1,1,1,-1]) #the F matrix
-        #the 2x2 operators
+        '''
+        ###
+        archieved 20240829, they are wrong. See the developer log for more details. 
+        Besisdes JW, we have to bring Fx and Fy, these two are the JW matrices inside the i-th site, JW is the JW matrix of the i-th site. I think this is enough to wake you up. 
+        ###
+        
+        JW = np.diag([1,-1,-1,-1,1,1,1,-1]) #This is the JW string of the whole site-i (20240829)
         id8 = np.diag([1,1,1,1,1,1,1,1])
         
         cxdag = np.zeros((8,8))
-        cxdag[1,0] = 1; cxdag[4,2] = 1; cxdag[5,3] = 1; cxdag[7,6] = 1; 
+        cxdag[1,0] = 1; cxdag[4,2] = 1; cxdag[5,3] = 1; cxdag[7,6] = 1; #these are actually a matrices? without any sign brought by JW (20240827)
         cx = cxdag.T
         cydag = np.zeros((8,8))
         cydag[2,0] = 1; cydag[4,1] = 1; cydag[6,3] = 1; cydag[7,5] = 1; 
@@ -156,6 +161,33 @@ class threeparton(Site):
         ops = dict(JW=JW, id=id8, 
                    cxdag = cxdag, cx = cx, cydag = cydag, cy = cy, czdag = czdag, cz = cz, 
                    cxdagF = cxdagF, Fcx = Fcx, cydagF = cydagF, Fcy = Fcy, czdagF = czdagF, Fcz = Fcz)
+        
+        Site.__init__(self, leg, names, **ops)
+        '''
+        JW = np.diag([1,-1,-1,-1,1,1,1,-1])
+        Fx = np.diag([1,-1,1,1,-1,-1,1,-1])
+        Fy = np.diag([1,1,-1,1,-1,1,-1,-1])
+        id8 = np.diag([1,1,1,1,1,1,1,1])
+        
+        axdag = np.zeros((8,8))
+        axdag[1,0] = 1; axdag[4,2] = 1; axdag[5,3] = 1; axdag[7,6] = 1; 
+        ax = axdag.T
+        aydag = np.zeros((8,8))
+        aydag[2,0] = 1; aydag[4,1] = 1; aydag[6,3] = 1; aydag[7,5] = 1; 
+        ay = aydag.T
+        azdag = np.zeros((8,8))
+        azdag[3,0] = 1; azdag[5,1] = 1; azdag[6,2] = 1; azdag[7,4] = 1; 
+        az = azdag.T
+
+        cxdag = axdag
+        cx = ax
+        cydag = aydag @ Fx
+        cy = Fx @ ay
+        czdag = azdag @ Fy @ Fx
+        cz = Fx @ Fy @ az
+
+        ops = dict(JW=JW, Fx=Fx, Fy=Fy, id8=id8, 
+                   cxdag = cxdag, cx = cx, cydag = cydag, cy = cy, czdag = czdag, cz = cz) #with the JW string embedded in c operators, there is no need to add a operators into ops dict. 
         
         Site.__init__(self, leg, names, **ops)
         
@@ -275,6 +307,11 @@ class MPOMPS():
         mpo = []
         L = self.L
         
+        '''
+        ###
+        #archieved 20240829, we are now trying to writen them in operators defined in the threeparton site
+        ###
+        
         t0 = npc.zeros(legs_first, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
         i = 0
         if xyz == 1:
@@ -322,6 +359,44 @@ class MPOMPS():
             tL[1, 0, 2, 0] = v[i]; tL[1, 0, 4, 1] = -v[i]; tL[1, 0, 6, 3] = v[i]; tL[1, 0, 7, 5] = -v[i];    
             tL[1, 0, 0, 2] = u[i]; tL[1, 0, 1, 4] = -u[i]; tL[1, 0, 3, 6] = u[i]; tL[1, 0, 5, 7] = -u[i]; 
         mpo.append(tL)
+        '''
+        
+        t0 = npc.zeros(legs_first, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+        i = 0
+        if xyz == 1:
+            t0[0, 0, :, :] = v[0]*self.site.get_op('cxdag') + u[0]*self.site.get_op('cx')
+        elif xyz == 0:
+            t0[0, 0, :, :] = v[0]*self.site.get_op('czdag') + u[0]*self.site.get_op('cz')
+        elif xyz == -1:
+            t0[0, 0, :, :] = v[0]*self.site.get_op('cydag') + u[0]*self.site.get_op('cy')
+            
+        t0[0, 1, :, :] = self.site.get_op('JW')
+        mpo.append(t0)
+        
+        for i in range(1,L-1):
+            ti = npc.zeros(legs_bulk, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+            ti[0,0,:,:] = self.site.get_op('id8')
+            if xyz == 1:
+                ti[1, 0, :, :] = v[i]*self.site.get_op('cxdag') + u[i]*self.site.get_op('cx')
+            elif xyz == 0:
+                ti[1, 0, :, :] = v[i]*self.site.get_op('czdag') + u[i]*self.site.get_op('cz')
+            elif xyz == -1:
+                ti[1, 0, :, :] = v[i]*self.site.get_op('cydag') + u[i]*self.site.get_op('cy')
+            ti[1, 1, :, :] = self.site.get_op('JW')
+            mpo.append(ti)
+                
+        i = L-1
+        tL = npc.zeros(legs_last, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+        tL[0,0,:,:] = self.site.get_op('id8')
+        if xyz == 1:
+            tL[1, 0, :, :] = v[i]*self.site.get_op('cxdag') + u[i]*self.site.get_op('cx')
+        elif xyz == 0:
+            tL[1, 0, :, :] = v[i]*self.site.get_op('czdag') + u[i]*self.site.get_op('cz')
+        elif xyz == -1:
+            tL[1, 0, :, :] = v[i]*self.site.get_op('cydag') + u[i]*self.site.get_op('cy')
+        mpo.append(tL)
+        
+        #And it works well
         
         return mpo
     
