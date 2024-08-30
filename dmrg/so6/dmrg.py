@@ -207,10 +207,10 @@ class SO6Site(Site):
         self.so6g = so6g
         if cons_N == None and cons_S == 'U1':
             chinfo = npc.ChargeInfo([1, 1, 1], ['P', 'Q', 'R'])
-            leg = npc.LegCharge.from_qflat(chinfo, [[-1, -2, 0], [-1, 1, 1], [-1, 1, -1], [1, -1, 1], [1, -1, -1], [1, 2, 0]])
+            leg = npc.LegCharge.from_qflat(chinfo, [[-1, -2, 0], [-1, 1, -1], [-1, 1, 1], [1, -1, -1], [1, -1, 1], [1, 2, 0]])
         elif cons_N == 'N' and cons_S == 'U1':
             chinfo = npc.ChargeInfo([1, 1, 1, 1], ['FakeN', 'P', 'Q', 'R'])
-            leg = npc.LegCharge.from_qflat(chinfo, [[1, -1, -2, 0], [1, -1, 1, 1], [1, -1, 1, -1], [1, 1, -1, 1], [1, 1, -1, -1], [1, 1, 2, 0]])
+            leg = npc.LegCharge.from_qflat(chinfo, [[1, -1, -2, 0], [1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, -1], [1, 1, 1, -1], [1, 1, 2, 0]]) #I copied the S^3_3 elements differ by a minus sign, fixed 20240830
         elif cons_N == 'N' and cons_S == None:
             chinfo = npc.ChargeInfo([2], ['FakeN'])
             leg = npc.LegCharge.from_qflat(chinfo, [[1],[1],[1],[1],[1],[1]])
@@ -248,7 +248,7 @@ class BBQJK(CouplingModel):
         #defined as self variables 240716
         self.so6_generators, self.c_mn = get_opr_list()
 
-        site = SO6Site(self.so6_generators, cons_N=None, cons_S='U1')
+        site = SO6Site(self.so6_generators, cons_N=None, cons_S='U1') #set to be cons_S=None for single test 20240830, but this yield D_max_dmrg = 216 for lx=6 chain
         self.sites = [site] * self.Lx
         self.lat = Chain(self.Lx, site, bc=self.bc)
         CouplingModel.__init__(self, self.lat, explicit_plus_hc=False)
@@ -432,7 +432,7 @@ if __name__ == "__main__":
     #not global variables anymore 240716
     #so6_generators, c_mn = get_opr_list()
     
-    model_paras = dict(cons_N=None, cons_S='U1', Lx = lx, bc=bc, J=J, K=K, D=D, sweeps=sweeps, verbose=2)
+    model_paras = dict(cons_N=None, cons_S='U1', Lx = lx, bc=bc, J=J, K=K, D=D, sweeps=sweeps, verbose=2) #20240830 set cons_S=None here
     so6bbq = BBQJK(model_paras)
     
     if args.job == 'dmrg':
