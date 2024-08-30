@@ -361,6 +361,8 @@ class MPOMPS():
         mpo.append(tL)
         '''
         
+        '''
+        #archieved 20240830
         t0 = npc.zeros(legs_first, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
         i = 0
         if xyz == 1:
@@ -397,6 +399,34 @@ class MPOMPS():
         mpo.append(tL)
         
         #And it works well
+        '''
+        
+        op_dict = {1: ('cxdag', 'cx'), 0: ('czdag', 'cz'), -1: ('cydag', 'cy')}
+        
+        t0 = npc.zeros(legs_first, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+        i = 0
+        if xyz in op_dict:
+            cr, an = op_dict[xyz]
+            t0[0, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
+        t0[0, 1, :, :] = self.site.get_op('JW')
+        mpo.append(t0)
+        
+        for i in range(1,L-1):
+            ti = npc.zeros(legs_bulk, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+            ti[0,0,:,:] = self.site.get_op('id8')
+            if xyz in op_dict:
+                cr, an = op_dict[xyz]
+                ti[1, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
+            ti[1, 1, :, :] = self.site.get_op('JW')
+            mpo.append(ti)
+                
+        i = L-1
+        tL = npc.zeros(legs_last, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+        tL[0,0,:,:] = self.site.get_op('id8')
+        if xyz in op_dict:
+            cr, an = op_dict[xyz]
+            tL[1, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
+        mpo.append(tL)
         
         return mpo
     
