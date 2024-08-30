@@ -1,6 +1,6 @@
 import numpy as np
 
-'''
+
 #archieved 20240829 17:36
 
 cxdag = np.zeros((8,8))
@@ -18,4 +18,3 @@ print('cydag F', cydag@JW)
 print('cydag Fx', cydag@Fx)
 print('czdag F', czdag@JW)
 print('czdag Fy Fx', czdag@Fy@Fx)
-'''

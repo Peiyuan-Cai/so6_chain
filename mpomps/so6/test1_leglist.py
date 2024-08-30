@@ -3,7 +3,7 @@ import numpy as np
 from copy import deepcopy
 
 # 定义字符列表
-characters = ['u', 'v', 'w', 'x', 'y', 'z']
+characters = ['w', 'x', 'y', 'z']
 
 # 存放组合结果的列表
 combinations = []
@@ -50,8 +50,8 @@ print('leglist2')
 print(leglist2)
 print(len(leglist2))
 '''
-JW = np.eye(64)
-for i in range(1,64):
+JW = np.eye(2**len(characters))
+for i in range(1,2**len(characters)):
     if len(combinations[i-1]) %2 == 1:
         JW[i,i] = -1
     
@@ -64,7 +64,7 @@ def fmatrix(flavor, basis):
         else:
             flist.append(1)
     fmat = np.diag(flist)
-    print(flist)
+    print('flist of flavor', flavor, 'is', flist)
     return fmat
 
 def adaggermatrix(flavor, basis):
@@ -92,6 +92,8 @@ def adaggermatrix(flavor, basis):
 
 name = ['empty'] + combinations
 
-fm = fmatrix('v',name)
-audag = adaggermatrix('v',name)
-print(audag)
+fm = fmatrix('w',name)
+adag = adaggermatrix('w',name)
+axdag = adaggermatrix('x',name)
+cxdag = axdag @ fmatrix('w',name)
+print(cxdag)
