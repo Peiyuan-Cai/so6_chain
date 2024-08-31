@@ -2,16 +2,12 @@ import itertools
 import numpy as np
 from copy import deepcopy
 
-# 定义字符列表
-characters = ['w', 'x', 'y', 'z']
+characters = ['u', 'v' ,'w', 'x', 'y', 'z']
 
-# 存放组合结果的列表
 combinations = []
 
-# 生成所有长度为1到6的组合
 for i in range(1, len(characters) + 1):
     for combo in itertools.combinations(characters, i):
-        # 将组合转换为字符串并添加到结果列表中
         combinations.append(''.join(combo))
 
 print(combinations)
