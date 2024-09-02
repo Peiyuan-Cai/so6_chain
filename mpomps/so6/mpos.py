@@ -226,7 +226,7 @@ class sixparton(Site):
         names = ['empty']+combinations #now names are the str form of 64 basis
 
         #operators
-        id64 = np.diag([1]*64)
+        id64 = np.eye(64)
 
         JW = np.eye(64)
         for i in range(1,64):
@@ -260,7 +260,7 @@ class MPOMPS():
     def __init__(self, v, u, **kwargs):
         self.cons_N = kwargs.get("cons_N", None)
         self.cons_S = kwargs.get("cons_S", None)
-        self.trunc_params = kwargs.get("trunc_params", dict(chi_max=20) )
+        self.trunc_params = kwargs.get("trunc_params", dict(chi_max=64) )
         self.pbc = kwargs.get("pbc", -1)
         
         assert v.ndim == 2
@@ -501,8 +501,8 @@ if __name__ == "__main__":
     print("Gutzwiller projected MLWO MPO-MPS result is", gppsimlwo)
     
     print("----------SO(6) Spin1 model DMRG---------")
-    model_params = dict(cons_N=None, cons_S=None, Lx = lx, pbc=pbc, J=J, K=K, D=Ddmrg, sweeps=sweeps, verbose=verbose)
-    so6dmrgmodel = BBQJK(model_params)
+    params_dmrg = dict(cons_N=None, cons_S=None, Lx = lx, pbc=pbc, J=J, K=K, D=Ddmrg, sweeps=sweeps, verbose=verbose)
+    so6dmrgmodel = BBQJK(params_dmrg)
     psidmrg, Edmrg = so6dmrgmodel.run_dmrg()
     psidmrg2, Edmrg2 = so6dmrgmodel.run_dmrg_orthogonal([psidmrg])
     print("SO(6) DMRG results")
