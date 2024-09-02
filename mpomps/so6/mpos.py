@@ -26,7 +26,7 @@ logging.getLogger('parso.cache').disabled = True
 logging.getLogger('matplotlib.font_manager').disabled = True
 
 class KitaevSingleChain():
-    def __init__(self, chi, delta, lamb, L, pbc=0):
+    def __init__(self, chi, delta, lamb, L, pbc=-1):
         """
         The Single Kitaev chain class. 
         
@@ -37,7 +37,7 @@ class KitaevSingleChain():
             delta (float): variational parameter $\delta$
             lamb (float): variational parameter $\lambda$
             L (int): Chain length
-            pbc (int, optional): Boundary condition. Defaults to be 0. 0 for OBC, 1 for PBC, 2 for APBC. 
+            pbc (int, optional): Boundary condition. Defaults to be 0. 0 for OBC, 1 for PBC, -1 for APBC. 
             
         Raises:
             Check pbc must be 0:open or 1:periodic or -1:anti-periodic: check your boundary condition input
@@ -73,7 +73,7 @@ class KitaevSingleChain():
             self.tmat[i, (i+1)%L] = t 
             self.dmat[i, (i+1)%L] = d 
         '''
-        20240828: any necessarity to consider parity? I don't think so.  
+        20240828: any necessarity to consider parity? I don't think so, we are considering even chain size now. 
         self.parity = 1
         if self.pbc == 1:
             parity = - 1 + 2 * ( L % 2 )
@@ -217,9 +217,11 @@ class sixparton(Site):
         elif cons_N == None and cons_S == 'flavor':
             chinfo = npc.ChargeInfo([1], ['flavor'])
             leg = npc.LegCharge.from_qflat(chinfo, leglist2)
-        else:
+        elif cons_N == None and cons_S == None:
             print("No symmetry used in site 'sixparton'. ")
             leg = npc.LegCharge.from_trivial(64)
+        else:
+            raise("Check your conserve quantities. ")
 
         names = ['empty']+combinations #now names are the str form of 64 basis
 
@@ -244,6 +246,8 @@ class sixparton(Site):
         cydag = aydag @ Fx @ Fw @ Fv @ Fu
         czdag = azdag @ Fy @ Fx @ Fw @ Fv @ Fu
         
+        #print('Should be true', np.allclose(Fz@Fy@Fx@Fw@Fv@Fu,JW))
+        
         cu = cudag.T; cv = cvdag.T; cw = cwdag.T; cx = cxdag.T; cy = cydag.T; cz = czdag.T; 
         
         ops = dict(id64=id64, JW=JW, 
@@ -257,6 +261,7 @@ class MPOMPS():
         self.cons_N = kwargs.get("cons_N", None)
         self.cons_S = kwargs.get("cons_S", None)
         self.trunc_params = kwargs.get("trunc_params", dict(chi_max=20) )
+        self.pbc = kwargs.get("pbc", -1)
         
         assert v.ndim == 2
         self._V = v
@@ -271,8 +276,11 @@ class MPOMPS():
     
     def init_mps(self, init=None):
         L = self.L
-        if init == None:
-            init = [0] * L #all empty
+        if init is None:
+            if self.pbc == -1 or self.pbc == 0:
+                init = [0] * L #all empty
+            if self.pbc == 1:
+                init = [1] + [0]*(L-1) #a_u^\dagger \ket{0}_a
         site = self.site
         self.init_psi = MPS.from_product_state([site]*L, init)
         self.psi = self.init_psi.copy()
@@ -281,7 +289,7 @@ class MPOMPS():
     
     def get_mpo_trivial(self, v, u, flavor):
         chinfo = self.site.leg.chinfo
-        pleg = self.site.leg #physical leg
+        pleg = self.site.leg #physical leg of parton site
 
         firstleg = npc.LegCharge.from_trivial(1)
         lastleg = npc.LegCharge.from_trivial(1)
@@ -294,69 +302,44 @@ class MPOMPS():
         mpo = []
         L = self.L
         
+        op_dict = {'u': ('cudag', 'cu'), 'v': ('cvdag', 'cv'), 'w': ('cwdag', 'cw'), 
+                   'x': ('cxdag', 'cx'), 'y': ('cydag', 'cy'), 'z': ('czdag', 'cz')}
+        
         t0 = npc.zeros(legs_first, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
         i = 0
-        if flavor == 'u':
-            t0[0, 0, :, :] = v[0]*self.site.get_op('cudag') + u[0]*self.site.get_op('cu')
-        elif flavor == 'v':
-            t0[0, 0, :, :] = v[0]*self.site.get_op('cvdag') + u[0]*self.site.get_op('cv')
-        elif flavor == 'w':
-            t0[0, 0, :, :] = v[0]*self.site.get_op('cwdag') + u[0]*self.site.get_op('cw')
-        elif flavor == 'x':
-            t0[0, 0, :, :] = v[0]*self.site.get_op('cxdag') + u[0]*self.site.get_op('cx')
-        elif flavor == 'y':
-            t0[0, 0, :, :] = v[0]*self.site.get_op('cydag') + u[0]*self.site.get_op('cy')
-        elif flavor == 'z':
-            t0[0, 0, :, :] = v[0]*self.site.get_op('czdag') + u[0]*self.site.get_op('cz')
-            
+        if flavor in op_dict:
+            cr, an = op_dict[flavor]
+            t0[0, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
         t0[0, 1, :, :] = self.site.get_op('JW')
         mpo.append(t0)
         
         for i in range(1,L-1):
             ti = npc.zeros(legs_bulk, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
             ti[0,0,:,:] = self.site.get_op('id64')
-            if flavor == 'u':
-                ti[1, 0, :, :] = v[i]*self.site.get_op('cudag') + u[i]*self.site.get_op('cu')
-            elif flavor == 'v':
-                ti[1, 0, :, :] = v[i]*self.site.get_op('cvdag') + u[i]*self.site.get_op('cv')
-            elif flavor == 'w':
-                ti[1, 0, :, :] = v[i]*self.site.get_op('cwdag') + u[i]*self.site.get_op('cw')
-            elif flavor == 'x':
-                ti[1, 0, :, :] = v[i]*self.site.get_op('cxdag') + u[i]*self.site.get_op('cx')
-            elif flavor == 'y':
-                ti[1, 0, :, :] = v[i]*self.site.get_op('cydag') + u[i]*self.site.get_op('cy')
-            elif flavor == 'z':
-                ti[1, 0, :, :] = v[i]*self.site.get_op('czdag') + u[i]*self.site.get_op('cz')
+            if flavor in op_dict:
+                cr, an = op_dict[flavor]
+                ti[1, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
             ti[1, 1, :, :] = self.site.get_op('JW')
             mpo.append(ti)
                 
         i = L-1
         tL = npc.zeros(legs_last, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
         tL[0,0,:,:] = self.site.get_op('id64')
-        if flavor == 'u':
-            tL[1, 0, :, :] = v[i]*self.site.get_op('cudag') + u[i]*self.site.get_op('cu')
-        elif flavor == 'v':
-            tL[1, 0, :, :] = v[i]*self.site.get_op('cvdag') + u[i]*self.site.get_op('cv')
-        elif flavor == 'w':
-            tL[1, 0, :, :] = v[i]*self.site.get_op('cwdag') + u[i]*self.site.get_op('cw')
-        elif flavor == 'x':
-            tL[1, 0, :, :] = v[i]*self.site.get_op('cxdag') + u[i]*self.site.get_op('cx')
-        elif flavor == 'y':
-            tL[1, 0, :, :] = v[i]*self.site.get_op('cydag') + u[i]*self.site.get_op('cy')
-        elif flavor == 'z':
-            tL[1, 0, :, :] = v[i]*self.site.get_op('czdag') + u[i]*self.site.get_op('cz')
+        if flavor in op_dict:
+            cr, an = op_dict[flavor]
+            tL[1, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
         mpo.append(tL)
         
         return mpo
     
-    def mpomps_step_1time(self, m, uvwxyz):
+    def mpomps_step_1time(self, m, flavor):
         vm = self._V[:,m]
         um = self._U[:,m]
         mps = self.psi
         if self.cons_N==None and self.cons_S==None:
-            mpo = self.get_mpo_trivial(vm, um, uvwxyz)
+            mpo = self.get_mpo_trivial(vm, um, flavor)
         elif self.cons_N=='Z2' and self.cons_S=='flavor':
-            mpo = self.get_mpo_Z2U1(vm, um, uvwxyz)
+            mpo = self.get_mpo_Z2U1(vm, um, flavor)
         else:
             raise "Symmetry set of N and S is not allowed. "
         halflength = self.L//2
@@ -414,23 +397,64 @@ def Wannier_Z2(g1, g2, N=1):
     g4 = g4[index1,:]
     return g3.T, g4.T
 
+def GutzwillerProjectionParton2Spin(partonpsi):
+    """
+    The GP function to project a parton mps onto a spin mps
+
+    sixparton site -> so6 site
+
+    Args:
+        partonpsi (tenpy.MPS object): the parton MPS
+        
+    Returns:
+        spinpsi (tenpy.MPS object): the spin MPS
+    """
+    partonsite = partonpsi.sites[0]
+    cons_N, cons_S = partonsite.conserve
+    partonleg = partonsite.leg
+    
+    so6gen, cmn = get_opr_list()
+    spinsite = SO6Site(so6gen, cons_N, cons_S)
+    spinleg = spinsite.leg
+    
+    if cons_N == 'Z2' and cons_S == 'flavor':
+        qtotal = [0, 0]
+    else:
+        qtotal = None
+        
+    projector = npc.zeros([spinleg, partonleg.conj()], qtotal=qtotal, labels=['p','p*'], dtype=partonpsi.dtype)
+    projector[0,1] = 1 #0th spin index <=> u parton
+    projector[1,2] = 1
+    projector[2,3] = 1
+    projector[3,4] = 1
+    projector[4,5] = 1
+    projector[5,6] = 1
+    
+    L = partonpsi.L
+    spinpsi = MPS.from_product_state([spinsite]*L, [0]*L)
+    for i in range(L):
+        t1 = npc.tensordot(partonpsi._B[i], projector, axes=(['p'],['p*']))
+        spinpsi.set_B(i, t1, form=None)
+    spinpsi.canonical_form()
+    
+    return spinpsi
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("-lx", type=int, default=6)
-    parser.add_argument("-theta", type=float, default=np.arctan(1/3))
     parser.add_argument("-chi", type=float, default=1.)
     parser.add_argument("-delta", type=float, default=1.)
     parser.add_argument("-lamb", type=float, default=0.)
     parser.add_argument("-D", type=int, default=10)
     parser.add_argument("-pbc", type=int, default=-1)
     parser.add_argument("-J", type=float, default=1.)
-    parser.add_argument("-K", type=float, default=1/6)
+    parser.add_argument("-K", type=float, default=0.1666666667)
+    parser.add_argument("-verbose", type=int, default=1)
     args = parser.parse_args()
-    
+        
     np.random.seed(0)
     
-    theta = args.theta
     chi = args.chi
     delta = args.delta
     lamb = args.lamb
@@ -454,7 +478,30 @@ if __name__ == "__main__":
     print("----------Build MLWO----------")
     wv, wu = Wannier_Z2(vmat.T, umat.T)
 
-    print("----------Z2U1 MPO-MPS method: MLWO----------")
-    params_mpompsz2u1 = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=D))
-    mpos = MPOMPS(wv, wu, **params_mpompsz2u1)
+    print("----------MPO-MPS method: MLWO----------")
+    params_mpomps = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=D), pbc=pbc)
+    mpos = MPOMPS(wv, wu, **params_mpomps)
     mpos.run()
+    
+    print("----------Gutzwiller projection to SO(6) site----------")
+    psimlwo = mpos.psi
+    gppsimlwo = GutzwillerProjectionParton2Spin(psimlwo)
+    
+    print("----------SO(6) Spin1 model DMRG---------")
+    model_params = dict(cons_N=None, cons_S=None, Lx = lx, pbc=pbc, J=J, K=K, D=216, sweeps=6, verbose=2)
+    so6dmrgmodel = BBQJK(model_params)
+    psidmrg, Edmrg = so6dmrgmodel.run_dmrg()
+    psidmrg2, Edmrg2 = so6dmrgmodel.run_dmrg_orthogonal([psidmrg])
+    print("SO(6) DMRG results")
+    print("psi1 after DMRG is", psidmrg)
+    print("psi2 after DMRG is", psidmrg2)
+    print("SO(6) DMRG Energy is", Edmrg, Edmrg2)
+    
+    print("----------sandwiches----------")
+    bbqmpo = so6dmrgmodel.calc_H_MPO()
+    print(" ")
+    print("the sandwich of projected psimlwo and SO(6) MPO is", bbqmpo.expectation_value(gppsimlwo)+Econst)
+    print(" ")
+    print("the overlap of psidmrg and gppsimlwo", psidmrg.overlap(gppsimlwo))
+    print(" ")
+    print("the overlap of psidmrg2 and gppsimlwo", psidmrg2.overlap(gppsimlwo))

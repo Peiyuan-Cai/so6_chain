@@ -2,7 +2,7 @@ import numpy as np
 import numpy.linalg as LA
 from copy import deepcopy
 from tenpy.models.model import CouplingModel, MPOModel
-from tenpy.networks.site import Site
+from tenpy.networks.site import Site, SpinSite
 from tenpy.models.lattice import Chain
 from tenpy.networks.mps import MPS
 from tenpy.networks.mpo import MPO
@@ -238,11 +238,11 @@ class BBQJK(CouplingModel):
         print(model_params)
         model_params = asConfig(model_params, self.__class__.__name__)
         self.model_params = model_params
-        self.Lx = model_params.get('Lx', 12)
+        self.Lx = model_params.get('Lx', 6)
         self.S = model_params.get('S', 1)
         self.pbc = model_params.get('pbc', -1)
         self.J = model_params.get('J', 1)
-        self.K = model_params.get('K', 1/3)
+        self.K = model_params.get('K', 1/6)
         self.verbose = model_params.get('verbose', 2)
         self.D = model_params.get('D', 64)
         self.sweeps = model_params.get('sweeps', 6)
@@ -258,16 +258,16 @@ class BBQJK(CouplingModel):
             self.bc = 'open'
         self.lat = Chain(self.Lx, site, bc=self.bc)
         CouplingModel.__init__(self, self.lat, explicit_plus_hc=False)
-        self.init_terms(model_params)
+        self.init_terms()
         H_MPO = self.calc_H_MPO()
         if model_params.get('sort_mpo_legs', False):
             H_MPO.sort_legcharges()
         MPOModel.__init__(self, self.lat, H_MPO)
         model_params.warn_unused()
     
-    def init_terms(self, model_params):
-        J = model_params.get('J', 1.)
-        K = model_params.get('K', 1/3)
+    def init_terms(self):
+        J = self.J
+        K = self.K
         for l in range(self.Lx):
             if l < self.Lx - 1:
                 i0, i1 = l, (l+1)%self.Lx
@@ -330,7 +330,7 @@ class BBQJK(CouplingModel):
             
         eng = dmrg.TwoSiteDMRGEngine(psiinit, self, dmrg_params)
         E, psidmrg = eng.run()
-        print("Eng = ", E+Econst)
+        print("Shifted Energy = ", E+Econst)
         self.psidmrg = psidmrg
         return psidmrg, E+Econst
     
@@ -376,6 +376,6 @@ class BBQJK(CouplingModel):
             
         eng = dmrg.TwoSiteDMRGEngine(psiinit, self, dmrg_params)
         E, psidmrg = eng.run()
-        print("Eng = ", E+Econst)
+        print("Shifted Energy = ", E+Econst)
         self.psidmrg = psidmrg
         return psidmrg, E+Econst
