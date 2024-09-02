@@ -221,7 +221,7 @@ class sixparton(Site):
             print("No symmetry used in site 'sixparton'. ")
             leg = npc.LegCharge.from_trivial(64)
         else:
-            raise("Check your conserve quantities. ")
+            raise ValueError("Check your conserve quantities. ")
 
         names = ['empty']+combinations #now names are the str form of 64 basis
 
@@ -336,7 +336,7 @@ class MPOMPS():
         vm = self._V[:,m]
         um = self._U[:,m]
         mps = self.psi
-        if self.cons_N==None and self.cons_S==None:
+        if self.cons_N is None and self.cons_S is None:
             mpo = self.get_mpo_trivial(vm, um, flavor)
         elif self.cons_N=='Z2' and self.cons_S=='flavor':
             mpo = self.get_mpo_Z2U1(vm, um, flavor)
@@ -446,7 +446,7 @@ if __name__ == "__main__":
     parser.add_argument("-chi", type=float, default=1.)
     parser.add_argument("-delta", type=float, default=1.)
     parser.add_argument("-lamb", type=float, default=0.)
-    parser.add_argument("-D", type=int, default=10)
+    parser.add_argument("-D", type=int, default=64)
     parser.add_argument("-pbc", type=int, default=-1)
     parser.add_argument("-J", type=float, default=1.)
     parser.add_argument("-K", type=float, default=0.1666666667)
