@@ -460,7 +460,7 @@ class MPOMPS():
         nmode = self._U.shape[0]
         print("MPO-MPS application start")
         
-        xyzlist = [-1, 0, 1]
+        xyzlist = [-1, 0, -1]
         for m in range(nmode):
             for xyz in xyzlist:
                 err, self.psi = self.mpomps_step_1time(m, xyz)
