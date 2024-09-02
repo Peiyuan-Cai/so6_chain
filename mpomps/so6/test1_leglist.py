@@ -53,14 +53,14 @@ for i in range(1,2**len(characters)):
     
 def fmatrix(flavor, basis):
     flist = [1]
-    print("length of basis", len(basis))
+    #print("length of basis", len(basis))
     for i in range(1,len(basis)):
         if flavor in basis[i]:
             flist.append(-1)
         else:
             flist.append(1)
     fmat = np.diag(flist)
-    print('flist of flavor', flavor, 'is', flist)
+    #print('flist of flavor', flavor, 'is', flist)
     return fmat
 
 def adaggermatrix(flavor, basis):
@@ -83,13 +83,65 @@ def adaggermatrix(flavor, basis):
                 
                 if len(setL)-len(setR)==1 and len(listdiff) == 1 and listdiff[0] == flavor:
                     adaggermatrixform[l,r] = 1
-                    print('l=',setL,'r=',setR)
+                    #print('l=',setL,'r=',setR)
     return adaggermatrixform
 
 name = ['empty'] + combinations
 
-fm = fmatrix('w',name)
+#----------------
+print(" ")
+print("cudag")
+adag = adaggermatrix('u',name)
+cdag = adag
+for i in range(cdag.shape[0]):
+    for j in range(cdag.shape[0]):
+        if cdag[i,j] != 0:
+            print('left',name[i],'right',name[j],'entry',cdag[i,j])
+
+print(" ")
+print("cvdag")
+adag = adaggermatrix('v',name)
+cdag = adag@fmatrix('u',name)
+for i in range(cdag.shape[0]):
+    for j in range(cdag.shape[0]):
+        if cdag[i,j] != 0:
+            print('left',name[i],'right',name[j],'entry',cdag[i,j])
+
+print(" ")
+print("cwdag")
 adag = adaggermatrix('w',name)
-axdag = adaggermatrix('x',name)
-cxdag = axdag @ fmatrix('w',name)
-print(cxdag)
+cdag = adag@fmatrix('v',name)@fmatrix('u',name)
+for i in range(cdag.shape[0]):
+    for j in range(cdag.shape[0]):
+        if cdag[i,j] != 0:
+            print('left',name[i],'right',name[j],'entry',cdag[i,j])
+
+print(" ")
+print("cxdag")
+adag = adaggermatrix('x',name)
+cdag = adag@fmatrix('w',name)@fmatrix('v',name)@fmatrix('u',name)
+for i in range(cdag.shape[0]):
+    for j in range(cdag.shape[0]):
+        if cdag[i,j] != 0:
+            print('left',name[i],'right',name[j],'entry',cdag[i,j])
+
+print(" ")
+print("cydag")
+adag = adaggermatrix('y',name)
+cdag = adag@fmatrix('x',name)@fmatrix('w',name)@fmatrix('v',name)@fmatrix('u',name)
+for i in range(cdag.shape[0]):
+    for j in range(cdag.shape[0]):
+        if cdag[i,j] != 0:
+            print('left',name[i],'right',name[j],'entry',cdag[i,j])
+
+print(" ")
+print("czdag")
+adag = adaggermatrix('z',name)
+cdag = adag@fmatrix('y',name)@fmatrix('x',name)@fmatrix('w',name)@fmatrix('v',name)@fmatrix('u',name)
+for i in range(cdag.shape[0]):
+    for j in range(cdag.shape[0]):
+        if cdag[i,j] != 0:
+            print('left',name[i],'right',name[j],'entry',cdag[i,j])
+
+#-----------
+print("JW == FzFyFxFwFvFu should be true: ", np.allclose(JW, fmatrix('z',name)@fmatrix('y',name)@fmatrix('x',name)@fmatrix('w',name)@fmatrix('v',name)@fmatrix('u',name)))
