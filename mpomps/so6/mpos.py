@@ -446,12 +446,21 @@ if __name__ == "__main__":
     parser.add_argument("-chi", type=float, default=1.)
     parser.add_argument("-delta", type=float, default=1.)
     parser.add_argument("-lamb", type=float, default=0.)
-    parser.add_argument("-D", type=int, default=64)
+    parser.add_argument("-Dmpos", type=int, default=64)
+    parser.add_argument("-Ddmrg", type=int, default=216)
+    parser.add_argument("-sweeps", type=int, default=6)
     parser.add_argument("-pbc", type=int, default=-1)
     parser.add_argument("-J", type=float, default=1.)
     parser.add_argument("-K", type=float, default=0.1666666667)
     parser.add_argument("-verbose", type=int, default=1)
     args = parser.parse_args()
+    
+    import logging
+    logging.basicConfig(level=args.verbose)
+    for _ in ['parso.python.diff', 'parso.cache', 'parso.python.diff', 
+              'parso.cache', 'matplotlib.font_manager', 'tenpy.tools.cache', 
+              'tenpy.algorithms.mps_common', 'tenpy.linalg.lanczos', 'tenpy.tools.params']:
+        logging.getLogger(_).disabled = True
         
     np.random.seed(0)
     
@@ -460,9 +469,12 @@ if __name__ == "__main__":
     lamb = args.lamb
     lx = args.lx
     pbc = args.pbc
-    D = args.D
+    Dmpos = args.Dmpos
+    Ddmrg = args.Ddmrg
     J = args.J
     K = args.K
+    sweeps = args.sweeps
+    verbose = args.verbose
     
     if pbc == 1 or pbc==-1:
         Econst = (5/3) * K * lx
@@ -479,16 +491,17 @@ if __name__ == "__main__":
     wv, wu = Wannier_Z2(vmat.T, umat.T)
 
     print("----------MPO-MPS method: MLWO----------")
-    params_mpomps = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=D), pbc=pbc)
+    params_mpomps = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=Dmpos), pbc=pbc)
     mpos = MPOMPS(wv, wu, **params_mpomps)
     mpos.run()
     
     print("----------Gutzwiller projection to SO(6) site----------")
     psimlwo = mpos.psi
     gppsimlwo = GutzwillerProjectionParton2Spin(psimlwo)
+    print("Gutzwiller projected MLWO MPO-MPS result is", gppsimlwo)
     
     print("----------SO(6) Spin1 model DMRG---------")
-    model_params = dict(cons_N=None, cons_S=None, Lx = lx, pbc=pbc, J=J, K=K, D=216, sweeps=6, verbose=2)
+    model_params = dict(cons_N=None, cons_S=None, Lx = lx, pbc=pbc, J=J, K=K, D=Ddmrg, sweeps=sweeps, verbose=verbose)
     so6dmrgmodel = BBQJK(model_params)
     psidmrg, Edmrg = so6dmrgmodel.run_dmrg()
     psidmrg2, Edmrg2 = so6dmrgmodel.run_dmrg_orthogonal([psidmrg])
