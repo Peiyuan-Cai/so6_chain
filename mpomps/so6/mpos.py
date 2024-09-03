@@ -513,6 +513,8 @@ if __name__ == "__main__":
     print("----------sandwiches----------")
     bbqmpo = so6dmrgmodel.calc_H_MPO()
     print(" ")
+    print("the overlap of psidmrg and psidmrg2", psidmrg.overlap(psidmrg2))
+    print(" ")
     print("the sandwich of projected psimlwo and SO(6) MPO is", bbqmpo.expectation_value(gppsimlwo)+Econst)
     print(" ")
     print("the overlap of psidmrg and gppsimlwo", psidmrg.overlap(gppsimlwo))
