@@ -14,7 +14,7 @@ from tenpy.tools.params import asConfig
 '''
 ---------------------------------------------SO(6) site----------------------------------------------------------
 '''
-class SO6Site(Site):
+class SU4HalfFillingSite(Site):
     def __init__(self, so6g, cons_N=None, cons_S=None):
         self.conserve = [cons_N, cons_S]
         self.cons_N = cons_N
@@ -30,18 +30,18 @@ class SO6Site(Site):
             chinfo = npc.ChargeInfo([2], ['FakeN'])
             leg = npc.LegCharge.from_qflat(chinfo, [[1],[1],[1],[1],[1],[1]])
         else:
-            print("No symmetry used in site SO6Site. ")
+            print("No symmetry used in site SU4HalfFillingSite. ")
             leg = npc.LegCharge.from_trivial(6)
         
         ops = dict()
         for i in range(36):
             ops['lambda{}'.format(i)] = self.so6g[i]
         
-        names = ['u','v','w','x','y','z'] #for the 6 double-occupied states we defined. 
+        names = ['a','b','c','d','e','f'] #for the 6 double-occupied states we defined. C_4^2=6
         Site.__init__(self, leg, names, **ops)
 
     def __repr__(self):
-        return "site for half-filled parton in 6 basis with conserve = {}".format([self.cons_N, self.cons_S])
+        return "site with physical basis of half-filling SU(4) fermions with conserve = {}".format([self.cons_N, self.cons_S])
     
 '''
 --------------------------------------------SU(4) oprs functions-------------------------------------------------
@@ -250,7 +250,7 @@ class BBQJK(CouplingModel):
         #defined as self variables 240716
         self.so6_generators, self.c_mn = get_opr_list()
 
-        site = SO6Site(self.so6_generators, cons_N=None, cons_S=None) #20240829 for the trivial test, we use [None, None] here
+        site = SU4HalfFillingSite(self.so6_generators, cons_N=None, cons_S=None) #20240829 for the trivial test, we use [None, None] here
         self.sites = [site] * self.Lx
         if self.pbc == 1 or self.pbc==-1:
             self.bc = 'periodic'

@@ -2,6 +2,7 @@
 The MPO-MPS method for SO(6) BBQ model
 
 Puiyuen 2024.08.27-
+    2024.09.04: finished MPOMPS with no symmetry used. The site for DMRG is no longer named SO6Site, but SU4HalfFillingSite.
 
 "I will make it better"
 """
@@ -401,28 +402,33 @@ def GutzwillerProjectionParton2Spin(partonpsi):
     """
     The GP function to project a parton mps onto a spin mps
 
-    sixparton site -> so6 site
+    sixparton site -> (SO6Site) -> SU4HalfFillingSite
 
     Args:
         partonpsi (tenpy.MPS object): the parton MPS
         
     Returns:
         spinpsi (tenpy.MPS object): the spin MPS
+        
+    Notes:
+        20240904: the site we used in DMRG is not the SO(6) site, it's the 6 dimensional representation of SU(4), i.e. the a,b,c,d,e,f formed by half filling SU(4) fermions. There is a unitary gate between projected state and BBQMPO, which is embedded in this function. 
     """
     partonsite = partonpsi.sites[0]
     cons_N, cons_S = partonsite.conserve
     partonleg = partonsite.leg
     
     so6gen, cmn = get_opr_list()
-    spinsite = SO6Site(so6gen, cons_N, cons_S)
+    spinsite = SU4HalfFillingSite(so6gen, cons_N, cons_S)
     spinleg = spinsite.leg
+    
+    middleleg = npc.LegCharge.from_trivial(6)
     
     if cons_N == 'Z2' and cons_S == 'flavor':
         qtotal = [0, 0]
     else:
         qtotal = None
         
-    projector = npc.zeros([spinleg, partonleg.conj()], qtotal=qtotal, labels=['p','p*'], dtype=partonpsi.dtype)
+    projector = npc.zeros([middleleg, partonleg.conj()], qtotal=qtotal, labels=['p','p*'], dtype=partonpsi.dtype)
     projector[0,1] = 1 #0th spin index <=> u parton
     projector[1,2] = 1
     projector[2,3] = 1
@@ -430,10 +436,21 @@ def GutzwillerProjectionParton2Spin(partonpsi):
     projector[4,5] = 1
     projector[5,6] = 1
     
+    #change the SO(6) site to SU(4) 6-dim representation site
+    unitary = npc.zeros([spinleg, middleleg.conj()], qtotal=qtotal, labels=['p','p*'], dtype=complex)
+    unitary[0,4] = 1; unitary[0,5] = 1j
+    unitary[1,0] = 1; unitary[1,1] = 1j
+    unitary[2,2] = 1; unitary[2,3] = 1j
+    unitary[3,2] = 1; unitary[3,3] = -1j
+    unitary[4,0] = -1; unitary[4,1] = 1j
+    unitary[5,4] = 1; unitary[5,5] = -1j
+    unitary *= np.sqrt(1/2)
+    
     L = partonpsi.L
     spinpsi = MPS.from_product_state([spinsite]*L, [0]*L)
     for i in range(L):
         t1 = npc.tensordot(partonpsi._B[i], projector, axes=(['p'],['p*']))
+        t1 = npc.tensordot(t1, unitary, axes=(['p'],['p*']))
         spinpsi.set_B(i, t1, form=None)
     spinpsi.canonical_form()
     
