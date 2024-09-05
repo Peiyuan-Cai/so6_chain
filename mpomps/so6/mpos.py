@@ -282,6 +282,7 @@ class MPOMPS():
                 init = [0] * L #all empty
             if self.pbc == 1:
                 init = [2] + [0]*(L-1) #a_{1,u}^\dagger \ket{0}_a
+        print("the MPO-MPS initial state is", init)
         site = self.site
         self.init_psi = MPS.from_product_state([site]*L, init)
         self.psi = self.init_psi.copy()
