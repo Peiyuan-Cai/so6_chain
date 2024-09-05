@@ -44,7 +44,7 @@ class KitaevSingleChain():
             Check pbc must be 0:open or 1:periodic or -1:anti-periodic: check your boundary condition input
             
         Notes:
-            240827: We should now have three types of boundary conditions namely 0(open), 1(periodic) and -1(anti-periodic), and calcel the 'bc' stuff
+            240827: We should now have three types of boundary conditions namely 0(open), 1(periodic) and -1(anti-periodic), and cancel the 'bc' stuff
         """
         self.L = L
         self.chi = chi
@@ -281,7 +281,7 @@ class MPOMPS():
             if self.pbc == -1 or self.pbc == 0:
                 init = [0] * L #all empty
             if self.pbc == 1:
-                init = [0] + [0]*(L-1) #a_{1,u}^\dagger \ket{0}_a
+                init = [2] + [0]*(L-1) #a_{1,u}^\dagger \ket{0}_a
         site = self.site
         self.init_psi = MPS.from_product_state([site]*L, init)
         self.psi = self.init_psi.copy()
