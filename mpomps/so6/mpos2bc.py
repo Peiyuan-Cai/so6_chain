@@ -3,7 +3,7 @@ The MPO-MPS method for SO(6) BBQ model
 
 Puiyuen 2024.08.27-
     2024.09.04: finished MPOMPS with no symmetry used. The site for DMRG is no longer named SO6Site, but SU4HalfFillingSite.
-
+    2024.09.05: start to check the PBC case, making two ground states at a time. 
 "I will make it better"
 """
 import matplotlib.pyplot as plt
@@ -27,7 +27,7 @@ logging.getLogger('parso.cache').disabled = True
 logging.getLogger('matplotlib.font_manager').disabled = True
 
 class KitaevSingleChain():
-    def __init__(self, chi, delta, lamb, L, pbc=-1):
+    def __init__(self, chi, delta, lamb, L, pbc):
         """
         The Single Kitaev chain class. 
         
@@ -38,7 +38,7 @@ class KitaevSingleChain():
             delta (float): variational parameter $\delta$
             lamb (float): variational parameter $\lambda$
             L (int): Chain length
-            pbc (int, optional): Boundary condition. Defaults to be 0. 0 for OBC, 1 for PBC, -1 for APBC. 
+            pbc (int, optional): Boundary condition. 0 for OBC, 1 for PBC, -1 for APBC. 
             
         Raises:
             Check pbc must be 0:open or 1:periodic or -1:anti-periodic: check your boundary condition input
@@ -279,10 +279,10 @@ class MPOMPS():
         L = self.L
         if init is None:
             if self.pbc == -1 or self.pbc == 0:
-                init = [1,1] + [0]*(L-2) #even parity
-                #init = [0] * L #all empty
+                #init = [1,1] + [0]*(L-2) #even parity
+                init = [0] * L #all empty
             if self.pbc == 1:
-                init = [2] + [0]*(L-1) #a_{1,u}^\dagger \ket{0}_a
+                init = [63] + [0]*(L-1) #a_{1,u}^\dagger a_{1,v}^\dagger ... a_{1,z}^\dagger \ket{0}_a
         print("the initial state is", init)
         site = self.site
         self.init_psi = MPS.from_product_state([site]*L, init)
@@ -494,14 +494,22 @@ if __name__ == "__main__":
     K = args.K
     sweeps = args.sweeps
     verbose = args.verbose
+
+    if pbc == 2:
+        print("Generating two ground states by APBC and PBC at a time. ")
+        Econst = (5/3) * K * lx
+        pbc1 = -1
+        pbc2 = 1
     
     if pbc == 1 or pbc==-1:
         Econst = (5/3) * K * lx
     elif pbc == 0:
         Econst = (5/3) * K * (lx-1)
-    
+
+    print(" ")
+    print("APBC case MPOMPS")
     print("----------Build single Kitaev chain Hamiltonian----------")
-    singlechain = KitaevSingleChain(chi, delta, lamb, lx, pbc)
+    singlechain = KitaevSingleChain(chi, delta, lamb, lx, pbc1)
     singlechain.calc_hamiltonian()
     vmat = singlechain.V
     umat = singlechain.U
@@ -510,32 +518,69 @@ if __name__ == "__main__":
     wv, wu = Wannier_Z2(vmat.T, umat.T)
 
     print("----------MPO-MPS method: MLWO----------")
-    params_mpomps = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=Dmpos), pbc=pbc)
+    params_mpomps = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=Dmpos), pbc=pbc1)
     mpos = MPOMPS(wv, wu, **params_mpomps)
     mpos.run()
     
     print("----------Gutzwiller projection to SO(6) site----------")
-    psimlwo = mpos.psi
-    gppsimlwo = GutzwillerProjectionParton2Spin(psimlwo)
-    print("Gutzwiller projected MLWO MPO-MPS result is", gppsimlwo)
+    psimlwo_apbc = mpos.psi
+    gppsimlwo_apbc = GutzwillerProjectionParton2Spin(psimlwo_apbc)
+    print("Gutzwiller projected MLWO MPO-MPS result is", gppsimlwo_apbc)
+
+    print(" ")
+    print("PBC case MPOMPS")
+    print("----------Build single Kitaev chain Hamiltonian----------")
+    singlechain = KitaevSingleChain(chi, delta, lamb, lx, pbc2)
+    singlechain.calc_hamiltonian()
+    vmat = singlechain.V
+    umat = singlechain.U
+
+    print("----------Build MLWO----------")
+    wv, wu = Wannier_Z2(vmat.T, umat.T)
+
+    print("----------MPO-MPS method: MLWO----------")
+    params_mpomps = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=Dmpos), pbc=pbc2)
+    mpos = MPOMPS(wv, wu, **params_mpomps)
+    mpos.run()
     
+    print("----------Gutzwiller projection to SO(6) site----------")
+    psimlwo_pbc = mpos.psi
+    gppsimlwo_pbc = GutzwillerProjectionParton2Spin(psimlwo_pbc)
+    print("Gutzwiller projected MLWO MPO-MPS result is", gppsimlwo_pbc)
+    
+
+    print(" ")
     print("----------SO(6) Spin1 model DMRG---------")
-    params_dmrg = dict(cons_N=None, cons_S=None, Lx = lx, pbc=pbc, J=J, K=K, D=Ddmrg, sweeps=sweeps, verbose=verbose)
+    params_dmrg = dict(cons_N=None, cons_S=None, Lx = lx, pbc=pbc1, J=J, K=K, D=Ddmrg, sweeps=sweeps, verbose=verbose)
     so6dmrgmodel = BBQJK(params_dmrg)
     psidmrg, Edmrg = so6dmrgmodel.run_dmrg()
     psidmrg2, Edmrg2 = so6dmrgmodel.run_dmrg_orthogonal([psidmrg])
     print("SO(6) DMRG results")
     print("psi1 after DMRG is", psidmrg)
     print("psi2 after DMRG is", psidmrg2)
-    print("SO(6) DMRG Energy is", Edmrg, Edmrg2)
+
     
+    print(" ")
     print("----------sandwiches----------")
     bbqmpo = so6dmrgmodel.calc_H_MPO()
+    #print("the overlap of psidmrg and psidmrg2", psidmrg.overlap(psidmrg2))
     print(" ")
-    print("the overlap of psidmrg and psidmrg2", psidmrg.overlap(psidmrg2))
+    print("the sandwich of projected psimlwo_apbc and SO(6) MPO is", bbqmpo.expectation_value(gppsimlwo_apbc)+Econst)
+
+    print("the overlap of psidmrg and gppsimlwo_apbc", psidmrg.overlap(gppsimlwo_apbc))
+
+    print("the overlap of psidmrg2 and gppsimlwo_apbc", psidmrg2.overlap(gppsimlwo_apbc))
+
+    print("check unification", psidmrg.overlap(gppsimlwo_apbc)**2, "+", psidmrg2.overlap(gppsimlwo_apbc)**2, "=", psidmrg.overlap(gppsimlwo_apbc)**2+psidmrg2.overlap(gppsimlwo_apbc)**2)
     print(" ")
-    print("the sandwich of projected psimlwo and SO(6) MPO is", bbqmpo.expectation_value(gppsimlwo)+Econst)
+    print("the sandwich of projected psimlwo and SO(6) MPO is", bbqmpo.expectation_value(gppsimlwo_pbc)+Econst)
+
+    print("the overlap of psidmrg and gppsimlwo", psidmrg.overlap(gppsimlwo_pbc))
+
+    print("the overlap of psidmrg2 and gppsimlwo", psidmrg2.overlap(gppsimlwo_pbc))
+
+    print("check unification", psidmrg.overlap(gppsimlwo_pbc)**2, "+", psidmrg2.overlap(gppsimlwo_pbc)**2, "=", psidmrg.overlap(gppsimlwo_pbc)**2+psidmrg2.overlap(gppsimlwo_pbc)**2)
     print(" ")
-    print("the overlap of psidmrg and gppsimlwo", psidmrg.overlap(gppsimlwo))
-    print(" ")
-    print("the overlap of psidmrg2 and gppsimlwo", psidmrg2.overlap(gppsimlwo))
+    
+    print("check overlap of projected apbc and pbc", gppsimlwo_apbc.overlap(gppsimlwo_pbc))
+    print("check overlap of unprojected apbc and pbc", psimlwo_apbc.overlap(psimlwo_pbc))
