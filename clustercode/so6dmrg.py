@@ -674,15 +674,23 @@ if __name__ == "__main__":
         
         print(" ")
         print("translational operator check")
-        print("<psi2|psi1>", psi2.overlap(psi1))
+        ovlp = psi2.overlap(psi1)
+        print("<psi2|psi1>", ovlp)
+        bbqmpo = so6bbq.calc_H_MPO()
+        eng1 = bbqmpo.expectation_value(psi1)+measure_E_shift
+        eng2 = bbqmpo.expectation_value(psi2)+measure_E_shift
+        print("<psi1|H|psi1>", eng1)
+        print("<psi2|H|psi2>", eng2)
         
         site = psi1.sites[0]
         transop = trnslop_mpo(site, lx)
         tpsi1 = deepcopy(psi1)
         tpsi1 = apply_mpo(transop,tpsi1)
         tpsi1.canonical_form()
-        print("<psi1|T|psi1>", psi1.overlap(tpsi1))
-        print("<psi2|T|psi1>", psi2.overlap(tpsi1))
+        T11 = psi1.overlap(tpsi1)
+        T21 = psi2.overlap(tpsi1)
+        print("<psi1|T|psi1>", T11)
+        print("<psi2|T|psi1>", T21)
 
         #ttpsi1 = apply_mpo(transop,tpsi1)
         #ttpsi1.canonical_form()
@@ -692,10 +700,16 @@ if __name__ == "__main__":
         tpsi2 = deepcopy(psi2)
         tpsi2 = apply_mpo(transop, tpsi2)
         tpsi2.canonical_form()
-        print("<psi1|T|psi2>", psi1.overlap(tpsi2))
-        print("<psi2|T|psi2>", psi2.overlap(tpsi2))
+        T12 = psi1.overlap(tpsi2)
+        T22 = psi2.overlap(tpsi2)
+        print("<psi1|T|psi2>", T12)
+        print("<psi2|T|psi2>", T22)
         #ttpsi2 = apply_mpo(transop,tpsi2)
         #ttpsi2.canonical_form()
         #print("<psi1|TT|psi2>", psi1.overlap(ttpsi2))
         #print("<psi2|TT|psi2>", psi2.overlap(ttpsi2))
+
+        T_mat = np.array([[T11, T12], [T21, T22]])
+        eigvals, eigvecs = LA.eig(T_mat)
+        print("eigvals of T_mat", eigvals)
         
