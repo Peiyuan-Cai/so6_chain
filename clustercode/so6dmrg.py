@@ -714,3 +714,19 @@ if __name__ == "__main__":
         eigvals, eigvecs = LA.eig(T_mat)
         print("eigvals of T_mat", eigvals)
         
+    if args.job == 'energy difference':
+        print("----------Start job energy difference----------")
+        #DMRG state loading
+        fname = path+'psidmrg_jobdmrg_lx{}_J{}_K{}_pbc{}_D{}_sweeps{}'.format(lx, J, K, pbc, D, sweeps)
+        with open(fname, 'rb') as f:
+            psi1 = pickle.load(f)
+        fname = path+'psidmrg_jobdmrg2_lx{}_J{}_K{}_pbc{}_D{}_sweeps{}'.format(lx, J, K, pbc, D, sweeps)
+        with open(fname, 'rb') as f:
+            psi2 = pickle.load(f)
+        
+        bbqmpo = so6bbq.calc_H_MPO()
+        eng1 = bbqmpo.expectation_value(psi1)+measure_E_shift
+        eng2 = bbqmpo.expectation_value(psi2)+measure_E_shift
+        print("<psi1|H|psi1>", eng1)
+        print("<psi2|H|psi2>", eng2)
+        print("abs energy difference", np.abs(eng1-eng2))
