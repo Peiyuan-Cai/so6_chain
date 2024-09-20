@@ -681,6 +681,7 @@ if __name__ == "__main__":
         eng2 = bbqmpo.expectation_value(psi2)+measure_E_shift
         print("<psi1|H|psi1>", eng1)
         print("<psi2|H|psi2>", eng2)
+        print("abs energy difference", np.abs(eng1-eng2))
         
         site = psi1.sites[0]
         transop = trnslop_mpo(site, lx)
