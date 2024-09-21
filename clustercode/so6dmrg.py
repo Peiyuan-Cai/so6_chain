@@ -714,7 +714,7 @@ if __name__ == "__main__":
         eigvals, eigvecs = LA.eig(T_mat)
         print("eigvals of T_mat", eigvals)
         
-    if args.job == 'energy difference':
+    if args.job == 'engdiff':
         print("----------Start job energy difference----------")
         #DMRG state loading
         fname = path+'psidmrg_jobdmrg_lx{}_J{}_K{}_pbc{}_D{}_sweeps{}'.format(lx, J, K, pbc, D, sweeps)
