@@ -17,3 +17,8 @@ from tenpy.algorithms import dmrg
 from tenpy.tools.params import asConfig
 import pickle
 
+class SO4Site(Site):
+    def __init__(self, cons_N=None, cons_S=None):
+        self.conserve = [cons_N, cons_S]
+        self.cons_N = cons_N
+        self.cons_S = cons_S
