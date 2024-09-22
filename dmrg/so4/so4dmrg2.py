@@ -36,13 +36,6 @@ def get_so4_opr_list():
     L5 = +np.kron(Sx, id) + np.kron(id, Sx)
     L6 = -np.kron(Sz, id) + np.kron(id, Sz)
 
-    print("L1", L1)
-    print("L2", L2)
-    print("L3", L3)
-    print("L4", L4)
-    print("L5", L5)
-    print("L6", L6)
-
     Loprs = [L1, L2, L3, L4, L5, L6]
 
     return Loprs
@@ -159,7 +152,7 @@ if __name__ == "__main__":
     #parsers
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("-lx", type=int, default=12)
+    parser.add_argument("-lx", type=int, default=16)
     parser.add_argument("-J", type=float, default=1.)
     parser.add_argument("-K", type=float, default=1/4)
     parser.add_argument("-D", type=int, default=200)
