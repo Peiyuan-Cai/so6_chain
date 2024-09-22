@@ -44,69 +44,25 @@ def get_so4_opr_list():
     print("L6", L6)
 
     Loprs = [L1, L2, L3, L4, L5, L6]
-    coe_list = []
 
-    for a in range(6):
-        for b in range(6):
-            LiLi = Loprs[a] @ Loprs[b]
-            Amat = np.zeros((16, len(Loprs)), dtype=complex)
-            B = LiLi.reshape(-1,1)
-            for l in range(len(Loprs)):
-                Amat[:,l] = Loprs[l].reshape(-1,1)[:,0]
-            pcoe, resi, rank, sing = LA.lstsq(Amat, B, rcond=None)
-            if len(resi)!=0 and resi[0]>1e-10:
-                Loprs.append(LiLi)
-                pcoe = np.append(np.zeros((len(Loprs)-1, 1)),1).reshape(len(Loprs),1)
-                coe_list.append(pcoe)
-            else:
-                coe_list.append(pcoe)
-
-    coe_list_new = []
-    for a in range(6):
-        for b in range(6):
-            LiLi = Loprs[a] @ Loprs[b]
-            Amat = np.zeros((16, len(Loprs)), dtype=complex)
-            B = LiLi.reshape(-1,1)
-            for l in range(len(Loprs)):
-                Amat[:,l] = Loprs[l].reshape(-1,1)[:,0]
-            pcoe = LA.solve(Amat, B)
-            coe_list_new.append(pcoe)
-    
-    coe_list = coe_list_new
-
-    for i in range(len(coe_list)):
-        coe_list[i] = coe_list[i].reshape(16)
-
-    def pvec(a,b):
-        return coe_list[6*a+b] #a,b=0,1,2,3,4,5
-    
-    cmn = np.zeros((16,16), dtype=complex)
-
-    P = dict()
-    for a in range(6):
-        for b in range(6):
-            P[(a,b)] = pvec(a,b)
-    
-    for m in range(16):
-        for n in range(16):
-            for a in range(6):
-                for b in range(6):
-                    cmn[m,n] += P[(a,b)][m] * P[(a,b)][n]
-
-    return Loprs, cmn
+    return Loprs
 
 class SO4Site(Site):
-    def __init__(self, so4g, cons_N=None, cons_S=None):
+    def __init__(self, cons_N=None, cons_S=None):
         self.conserve = [cons_N, cons_S]
         self.cons_N = cons_N
         self.cons_S = cons_S
-        self.so4g = so4g
 
         leg = npc.LegCharge.from_trivial(4)
+        L6list = get_so4_opr_list()
         
         ops = dict()
-        for i in range(len(self.so4g)):
-            ops['L{}'.format(i)] = self.so4g[i]
+        for i in range(len(L6list)):
+            ops['L{}'.format(i)] = L6list[i]
+        
+        for a in range(6):
+            for b in range(6):
+                ops['L{}'.format(6+6*a+b)] = L6list[a] @ L6list[b]
 
         names = ['1u2u', '1d2u', '1u2d', '1d2d']
         Site.__init__(self, leg, names, **ops)
@@ -128,9 +84,8 @@ class BBQJKSO4(CouplingModel):
         self.D = model_params.get('D', 200)
         self.sweeps = model_params.get('sweeps', 10)
         
-        self.so4_generators, self.c_mn = get_so4_opr_list()
 
-        site = SO4Site(self.so4_generators, cons_N=None, cons_S=None)
+        site = SO4Site(cons_N=None, cons_S=None)
         self.sites = [site] * self.Lx
         self.lat = Chain(self.Lx, site, bc=self.bc)
         CouplingModel.__init__(self, self.lat, explicit_plus_hc=False)
@@ -156,9 +111,8 @@ class BBQJKSO4(CouplingModel):
         for a in range(6):
             self.add_coupling_term(J, i0, i1, "L"+str(a), "L"+str(a))
         
-        for m in range(16):
-            for n in range(16):
-                self.add_coupling_term(K*np.round(self.c_mn[m,n],6), i0, i1, "L"+str(m), "L"+str(n))
+        for a in range(6,42):
+            self.add_coupling_term(K, i0, i1, "L"+str(a), "L"+str(a))
     
     def run_dmrg(self, **kwargs):
         mixer      = kwargs.get('mixer', True)
