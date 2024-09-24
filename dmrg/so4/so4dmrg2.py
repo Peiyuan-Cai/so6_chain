@@ -1,7 +1,9 @@
 """
 SO4 chain DMRG code compact version for HPC use. As a copy of so6dmrg.py
 
-Puiyuen 240918-
+Puiyuen 240918-240924
+
+This is a resource killer version, dont use it on HPC. Use so4dmrg.py instead.
 """
 import numpy as np
 import numpy.linalg as LA
