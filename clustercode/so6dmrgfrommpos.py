@@ -485,6 +485,7 @@ if __name__ == "__main__":
         print(psi_dmrg)
         
         print("-----energy-----")
+        so6bbq = BBQJK(model_paras)
         bbqmpo = so6bbq.calc_H_MPO()
         print("The DMRG energy of psi is", bbqmpo.expectation_value(psi_dmrg)+measure_E_shift)
         
@@ -519,6 +520,7 @@ if __name__ == "__main__":
         print(psi_dmrg)
         
         print("-----energy-----")
+        so6bbq = BBQJK(model_paras)
         bbqmpo = so6bbq.calc_H_MPO()
         print("The DMRG energy of psi is", bbqmpo.expectation_value(psi_dmrg)+measure_E_shift)
         
@@ -681,6 +683,8 @@ if __name__ == "__main__":
         
         print(" ")
         print("translational operator check")
+        so6bbq = BBQJK(model_paras)
+
         ovlp = psi2.overlap(psi1)
         print("<psi2|psi1>", ovlp)
         bbqmpo = so6bbq.calc_H_MPO()
@@ -731,6 +735,7 @@ if __name__ == "__main__":
         with open(fname, 'rb') as f:
             psi2 = pickle.load(f)
         
+        so6bbq = BBQJK(model_paras)
         bbqmpo = so6bbq.calc_H_MPO()
         eng1 = bbqmpo.expectation_value(psi1)+measure_E_shift
         eng2 = bbqmpo.expectation_value(psi2)+measure_E_shift

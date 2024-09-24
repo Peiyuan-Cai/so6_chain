@@ -524,7 +524,7 @@ if __name__ == "__main__":
     print("Gutzwiller projected MLWO MPO-MPS result is", gppsimlwo_apbc)
 
     print("----------Saving the APBC MPO-MPS state----------")
-    fname = homepath+'psimpos_lx{}_1'.format(lx)
+    fname = os.path.join(homepath, 'psimpos_lx{}_1'.format(lx))
     with open(fname, 'wb') as f:
         pickle.dump(gppsimlwo_apbc, f)
     print("saved successfully")
@@ -551,7 +551,7 @@ if __name__ == "__main__":
     print("Gutzwiller projected MLWO MPO-MPS result is", gppsimlwo_pbc)
 
     print("----------Saving the PBC MPO-MPS state----------")
-    fname = homepath+'psimpos_lx{}_2'.format(lx)
+    fname = os.path.join(homepath, 'psimpos_lx{}_2'.format(lx))
     with open(fname, 'wb') as f:
         pickle.dump(gppsimlwo_pbc, f)
     print("saved successfully")
