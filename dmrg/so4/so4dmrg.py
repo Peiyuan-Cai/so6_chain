@@ -95,7 +95,11 @@ class SO4Site(Site):
         self.cons_S = cons_S
         self.so4g = so4g
 
-        leg = npc.LegCharge.from_trivial(4)
+        if self.cons_N is None and self.cons_S == 'U1':
+            chinfo = npc.ChargeInfo([1, 1], ['S', 'T'])
+            leg = npc.LegCharge.from_qflat(chinfo, [[-1, 0], [0, -1], [0, 1], [1, 0]])
+        elif self.cons_N is None and self.cons_S is None:
+            leg = npc.LegCharge.from_trivial(4)
         
         ops = dict()
         for i in range(len(self.so4g)):
