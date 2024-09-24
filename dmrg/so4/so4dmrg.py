@@ -36,13 +36,6 @@ def get_so4_opr_list():
     L5 = +np.kron(Sx, id) + np.kron(id, Sx)
     L6 = -np.kron(Sz, id) + np.kron(id, Sz)
 
-    print("L1", L1)
-    print("L2", L2)
-    print("L3", L3)
-    print("L4", L4)
-    print("L5", L5)
-    print("L6", L6)
-
     Loprs = [L1, L2, L3, L4, L5, L6]
     coe_list = []
 
@@ -153,12 +146,12 @@ class BBQJKSO4(CouplingModel):
             else:
                 break
         
-        for a in range(6):
-            self.add_coupling_term(J, i0, i1, "L"+str(a), "L"+str(a))
-        
-        for m in range(16):
-            for n in range(16):
-                self.add_coupling_term(K*np.round(self.c_mn[m,n],6), i0, i1, "L"+str(m), "L"+str(n))
+            for a in range(6):
+                self.add_coupling_term(J, i0, i1, "L"+str(a), "L"+str(a))
+            
+            for m in range(16):
+                for n in range(16):
+                    self.add_coupling_term(K*np.round(self.c_mn[m,n],6), i0, i1, "L"+str(m), "L"+str(n))
     
     def run_dmrg(self, **kwargs):
         mixer      = kwargs.get('mixer', True)
@@ -205,7 +198,7 @@ if __name__ == "__main__":
     #parsers
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("-lx", type=int, default=12)
+    parser.add_argument("-lx", type=int, default=8)
     parser.add_argument("-J", type=float, default=1.)
     parser.add_argument("-K", type=float, default=1/4)
     parser.add_argument("-D", type=int, default=200)

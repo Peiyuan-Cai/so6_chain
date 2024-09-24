@@ -26,8 +26,6 @@ def get_so4_opr_list():
     Sx = 0.5 * sigmax
     Sy = 0.5 * sigmay
     Sz = 0.5 * sigmaz
-    Sp = Sx + 1j * Sy
-    Sm = Sx - 1j * Sy
 
     L1 = -np.kron(Sz, id) - np.kron(id, Sz)
     L2 = -np.kron(Sx, id) + np.kron(id, Sx)
@@ -51,11 +49,11 @@ class SO4Site(Site):
         
         ops = dict()
         for i in range(len(L6list)):
-            ops['L{}'.format(i)] = L6list[i]
+            ops['L{}'.format(i)] = L6list[i] #linears
         
         for a in range(6):
             for b in range(6):
-                ops['L{}'.format(6+6*a+b)] = L6list[a] @ L6list[b]
+                ops['L{}'.format(6+6*a+b)] = L6list[a] @ L6list[b] #quadratics
 
         names = ['1u2u', '1d2u', '1u2d', '1d2d']
         Site.__init__(self, leg, names, **ops)
@@ -68,7 +66,7 @@ class BBQJKSO4(CouplingModel):
         print(model_params)
         model_params = asConfig(model_params, self.__class__.__name__)
         self.model_params = model_params
-        self.Lx = model_params.get('Lx', 12)
+        self.Lx = model_params.get('Lx', 8)
         self.S = model_params.get('S', 1)
         self.bc = model_params.get('bc', 'periodic')
         self.J = model_params.get('J', 1)
@@ -101,11 +99,11 @@ class BBQJKSO4(CouplingModel):
             else:
                 break
         
-        for a in range(6):
-            self.add_coupling_term(J, i0, i1, "L"+str(a), "L"+str(a))
-        
-        for a in range(6,42):
-            self.add_coupling_term(K, i0, i1, "L"+str(a), "L"+str(a))
+            for a in range(6):
+                self.add_coupling_term(J, i0, i1, "L"+str(a), "L"+str(a))
+            
+            for a in range(6,42):
+                self.add_coupling_term(K, i0, i1, "L"+str(a), "L"+str(a))
     
     def run_dmrg(self, **kwargs):
         mixer      = kwargs.get('mixer', True)
