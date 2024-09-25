@@ -548,7 +548,7 @@ if __name__ == "__main__":
     gppsimlwo_pbc = GutzwillerProjectionParton2Spin(psimlwo_pbc)
     print("Gutzwiller projected MLWO MPO-MPS result is", gppsimlwo_pbc)
     
-
+    '''
     print(" ")
     print("----------SO(6) Spin1 model DMRG---------")
     params_dmrg = dict(cons_N=None, cons_S=None, Lx = lx, pbc=pbc1, J=J, K=K, D=Ddmrg, sweeps=sweeps, verbose=verbose)
@@ -558,7 +558,6 @@ if __name__ == "__main__":
     print("SO(6) DMRG results")
     print("psi1 after DMRG is", psidmrg)
     print("psi2 after DMRG is", psidmrg2)
-
     
     print(" ")
     print("----------sandwiches----------")
@@ -581,11 +580,12 @@ if __name__ == "__main__":
 
     print("check overlap", psidmrg.overlap(gppsimlwo_pbc)**2, "+", psidmrg2.overlap(gppsimlwo_pbc)**2, "=", psidmrg.overlap(gppsimlwo_pbc)**2+psidmrg2.overlap(gppsimlwo_pbc)**2)
     print(" ")
+    '''
     
     print("check overlap of projected apbc and pbc", gppsimlwo_apbc.overlap(gppsimlwo_pbc))
     print("check overlap of unprojected apbc and pbc", psimlwo_apbc.overlap(psimlwo_pbc))
     
-    dimercheck = 0
+    dimercheck = 1
     if dimercheck == 1:
         print(" Dimercheck ")
         def mps1_mpo_mps2(mps1, opr_string, mps2):
@@ -677,16 +677,31 @@ if __name__ == "__main__":
                 mps._B[i] = B#.itranspose(('vL', 'p', 'vR'))
             return mps
         
-        site = psimlwo_apbc.sites[0]
+        site = gppsimlwo_apbc.sites[0]
         transop = trnslop_mpo(site, lx)
-        tpsi1 = deepcopy(psimlwo_apbc)
+        print(transop[0])
+        
+        '''
+        tpsi1 = deepcopy(gppsimlwo_apbc)
         tpsi1 = apply_mpo(transop, tpsi1)
         tpsi1.canonical_form()
+        print(tpsi1.chi)
         print("<projected_pbc|T|projected_apbc> is", psimlwo_pbc.overlap(psimlwo_apbc))
+        '''
         
         site = gppsimlwo_apbc.sites[0]
         transop = trnslop_mpo(site, lx)
         tpsi1 = deepcopy(gppsimlwo_apbc)
         tpsi1 = apply_mpo(transop, tpsi1)
         tpsi1.canonical_form()
-        print("<projected_pbc|T|projected_apbc> is", gppsimlwo_pbc.overlap(gppsimlwo_apbc))
+        print("<projected_pbc|T|projected_apbc> is", gppsimlwo_pbc.overlap(tpsi1))
+
+        tpsi1 = deepcopy(gppsimlwo_pbc)
+        tpsi1 = apply_mpo(transop, tpsi1)
+        tpsi1.canonical_form()
+        print("<projected_pbc|T|projected_pbc> is", gppsimlwo_pbc.overlap(tpsi1))
+
+        tpsi1 = deepcopy(gppsimlwo_apbc)
+        tpsi1 = apply_mpo(transop, tpsi1)
+        tpsi1.canonical_form()
+        print("<projected_apbc|T|projected_apbc> is", gppsimlwo_apbc.overlap(tpsi1))
