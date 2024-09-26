@@ -96,8 +96,8 @@ class SO4Site(Site):
         self.so4g = so4g
 
         if self.cons_N is None and self.cons_S == 'U1':
-            chinfo = npc.ChargeInfo([1, 1], ['S', 'T'])
-            leg = npc.LegCharge.from_qflat(chinfo, [[-1, 0], [0, -1], [0, 1], [1, 0]])
+            chinfo = npc.ChargeInfo([1], ['S'])
+            leg = npc.LegCharge.from_qflat(chinfo, [0,1,-1,0])
         elif self.cons_N is None and self.cons_S is None:
             leg = npc.LegCharge.from_trivial(4)
         
@@ -127,7 +127,7 @@ class BBQJKSO4(CouplingModel):
         
         self.so4_generators, self.c_mn = get_so4_opr_list()
 
-        site = SO4Site(self.so4_generators, cons_N=None, cons_S=None)
+        site = SO4Site(self.so4_generators, cons_N=None, cons_S='U1')
         self.sites = [site] * self.Lx
         self.lat = Chain(self.Lx, site, bc=self.bc)
         CouplingModel.__init__(self, self.lat, explicit_plus_hc=False)
