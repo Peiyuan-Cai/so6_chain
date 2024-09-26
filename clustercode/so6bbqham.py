@@ -14,6 +14,35 @@ from tenpy.tools.params import asConfig
 '''
 ---------------------------------------------SO(6) site----------------------------------------------------------
 '''
+class SO6Site(Site):
+    def __init__(self, so6g, cons_N=None, cons_S=None):
+        self.conserve = [cons_N, cons_S]
+        self.cons_N = cons_N
+        self.cons_S = cons_S
+        self.so6g = so6g
+        if cons_N == None and cons_S == 'U1':
+            chinfo = npc.ChargeInfo([1, 1, 1], ['P', 'Q', 'R'])
+            leg = npc.LegCharge.from_qflat(chinfo, [[-1, -2, 0], [-1, 1, 1], [-1, 1, -1], [1, -1, 1], [1, -1, -1], [1, 2, 0]])
+        elif cons_N == 'N' and cons_S == 'U1':
+            chinfo = npc.ChargeInfo([1, 1, 1, 1], ['FakeN', 'P', 'Q', 'R'])
+            leg = npc.LegCharge.from_qflat(chinfo, [[1, -1, -2, 0], [1, -1, 1, 1], [1, -1, 1, -1], [1, 1, -1, 1], [1, 1, -1, -1], [1, 1, 2, 0]])
+        elif cons_N == 'N' and cons_S == None:
+            chinfo = npc.ChargeInfo([2], ['FakeN'])
+            leg = npc.LegCharge.from_qflat(chinfo, [[1],[1],[1],[1],[1],[1]])
+        else:
+            print("No symmetry used in site SU4HalfFillingSite. ")
+            leg = npc.LegCharge.from_trivial(6)
+        
+        ops = dict()
+        for i in range(36):
+            ops['lambda{}'.format(i)] = self.so6g[i]
+        
+        names = ['a','b','c','d','e','f'] #for the 6 double-occupied states we defined. C_4^2=6
+        Site.__init__(self, leg, names, **ops)
+
+    def __repr__(self):
+        return "site with physical basis of half-filling SU(4) fermions with conserve = {}".format([self.cons_N, self.cons_S])
+
 class SU4HalfFillingSite(Site):
     def __init__(self, so6g, cons_N=None, cons_S=None):
         self.conserve = [cons_N, cons_S]
