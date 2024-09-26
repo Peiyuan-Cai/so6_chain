@@ -12,9 +12,6 @@ from tenpy.algorithms import dmrg
 from tenpy.tools.params import asConfig
 import pickle
 
-import os
-homepath  = os.getcwd()
-
 print(" Dimercheck ")
 def mps1_mpo_mps2(mps1, opr_string, mps2):
     assert len(mps1._B) == len(opr_string) == len(mps2._B)
@@ -105,4 +102,37 @@ def apply_mpo(mpo, mps, i0=0):
         mps._B[i] = B#.itranspose(('vL', 'p', 'vR'))
     return mps
 
-lxlist = lxlist = [24, 30, 36, 42, 48, 54, 60]
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-lx", type=int, default=6)
+    args = parser.parse_args()
+    
+    lx = args.lx
+    
+    import os
+    homepath  = os.getcwd()
+    
+    fname = homepath + '/psimpos_lx{}_1'.format(lx)
+    with open(fname, 'rb') as f:
+        psiapbc = pickle.load(f)
+    fname = homepath + '/psimpos_lx{}_2'.format(lx)
+    with open(fname, 'rb') as f:
+        psipbc = pickle.load(f)
+        
+    site = psiapbc.sites[0]
+    transop = trnslop_mpo(site, lx)
+    tpsi = deepcopy(psiapbc)
+    tpsi = apply_mpo(transop, tpsi)
+    tpsi.canonical_form()
+    print('<pbc|T|apbc> = ', psipbc.overlap(tpsi))
+    
+    tpsi = deepcopy(psiapbc)
+    tpsi = apply_mpo(transop, tpsi)
+    tpsi.canonical_form()
+    print('<apbc|T|apbc> = ', psiapbc.overlap(tpsi))
+    
+    tpsi = deepcopy(psipbc)
+    tpsi = apply_mpo(transop, tpsi)
+    tpsi.canonical_form()
+    print('<pbc|T|pbc> = ', psipbc.overlap(tpsi))
