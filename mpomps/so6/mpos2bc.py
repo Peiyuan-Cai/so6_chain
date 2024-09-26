@@ -582,8 +582,8 @@ if __name__ == "__main__":
     print(" ")
     '''
     
-    print("check overlap of projected apbc and pbc", gppsimlwo_apbc.overlap(gppsimlwo_pbc))
-    print("check overlap of unprojected apbc and pbc", psimlwo_apbc.overlap(psimlwo_pbc))
+    #print("check overlap of projected apbc and pbc", gppsimlwo_apbc.overlap(gppsimlwo_pbc))
+    #print("check overlap of unprojected apbc and pbc", psimlwo_apbc.overlap(psimlwo_pbc))
     
     dimercheck = 1
     if dimercheck == 1:
@@ -676,10 +676,6 @@ if __name__ == "__main__":
                 B.legs[B.get_leg_index('vR')] = B.get_leg('vR').to_LegCharge()
                 mps._B[i] = B#.itranspose(('vL', 'p', 'vR'))
             return mps
-        
-        site = gppsimlwo_apbc.sites[0]
-        transop = trnslop_mpo(site, lx)
-        print(transop[0])
         
         '''
         tpsi1 = deepcopy(gppsimlwo_apbc)
