@@ -26,6 +26,14 @@ print("L4", L4)
 print("L5", L5)
 print("L6", L6)
 
+efac = np.exp(1j*np.pi/4)
+U = (1/np.sqrt(2))*np.array([[efac, 0, 0, -efac],
+              [np.conjugate(efac), 0, 0, np.conjugate(efac)],
+              [0, -np.conjugate(efac), np.conjugate(efac), 0],
+              [0, efac, efac, 0]])
+
+print("check U is unitary", np.allclose(np.conjugate(U).T, LA.inv(U)))
+
 Loprs = [L1, L2, L3, L4, L5, L6]
 c=0
 coe_list = []
@@ -49,3 +57,9 @@ print(len(Loprs))
 
 print(len(coe_list))
 print(coe_list[0])
+
+Loprs_new = []
+for m in range(len(Loprs)):
+    Loprs_new.append(U @ Loprs[m] @ np.conjugate(U).T)
+    print("the",m,"th new L operator")
+    print(Loprs_new[m])
