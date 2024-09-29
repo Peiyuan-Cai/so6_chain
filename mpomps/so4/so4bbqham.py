@@ -122,7 +122,7 @@ class BBQJKSO4(CouplingModel):
         
         self.so4_generators, self.c_mn = get_so4_opr_list()
 
-        site = SO4Site(self.so4_generators, cons_N=None, cons_S='U1')
+        site = SO4Site(self.so4_generators, cons_N=None, cons_S=None)
         self.sites = [site] * self.Lx
         self.lat = Chain(self.Lx, site, bc=self.bc)
         CouplingModel.__init__(self, self.lat, explicit_plus_hc=False)
@@ -187,6 +187,51 @@ class BBQJKSO4(CouplingModel):
         else:
             print("wrong init")
 
+        eng = dmrg.TwoSiteDMRGEngine(psiinit, self, dmrg_params)
+        E, psidmrg = eng.run()
+        print("Eng = ", E)
+        self.psidmrg = psidmrg
+        return psidmrg, E
+    
+    def run_dmrg_orthogonal(self, gslist, **kwargs):
+        """
+        gslist is a list of states to projected
+        """
+        mixer      = kwargs.get('mixer', True)
+        chi_max    = kwargs.get('chi_max', self.D)
+        max_E_err  = kwargs.get('max_E_err', 1e-10)
+        max_sweeps = kwargs.get('max_sweeps', self.sweeps)
+        min_sweeps = kwargs.get('min_sweeps', min(3, max_sweeps) )
+        dmrg_params = dict(mixer=mixer, 
+                           trunc_params=dict(chi_max=chi_max),
+                           max_E_err=max_E_err, 
+                           max_sweeps=max_sweeps,
+                           min_sweeps=min_sweeps,
+                           verbose=2,
+                           orthogonal_to=gslist)
+
+        init = kwargs.get('init', None)
+        if init is None:
+            N = self.lat.N_sites
+            if N%4==0 and N>0:
+                init = [0]*(N//4) + [1]*(N//4) + [2]*(N//4) + [3]*(N//4)
+            else:
+                raise("Check the system size must be integral multiple of 4")
+            np.random.shuffle(init)
+            psiinit = MPS.from_product_state(self.lat.mps_sites(), init)
+            psiinit.norm = 1
+            psiinit.canonical_form()
+        elif isinstance(init, str):
+            with open (init, 'rb') as f:
+                psiinit = pickle.load(f)
+            dmrg_params['mixer'] = False
+        elif isinstance(init, list):
+            psiinit = MPS.from_product_state(self.lat.mps_sites(), init)
+        elif isinstance(init, MPS):
+            psiinit = init
+        else:
+            print("wrong init")
+            
         eng = dmrg.TwoSiteDMRGEngine(psiinit, self, dmrg_params)
         E, psidmrg = eng.run()
         print("Eng = ", E)

@@ -107,7 +107,7 @@ class KitaevSingleChain():
 '''
 #a funtion to calculate the values in the sixparton flavor quantum number
 def flavor_qn(combination):
-    qn_map = {'u': -5/2, 'v': -3/2, 'w': -1/2, 'x': 1/2, 'y': 3/2, 'z': 5/2}
+    qn_map = {'w': -3/2, 'x': -1/2, 'y': 1/2, 'z': 3/2}
     totalqn = 0
     for char in combination:
         totalqn += qn_map[char]
@@ -192,7 +192,7 @@ class sixparton(Site):
         self.cons_S = cons_S
 
         #itertools counting part
-        flavors = ['u','v','w','x','y','z']
+        flavors = ['w','x','y','z']
         combinations = []
         for i in range(1, len(flavors) + 1):
             for combo in itertools.combinations(flavors, i):
@@ -220,40 +220,38 @@ class sixparton(Site):
             leg = npc.LegCharge.from_qflat(chinfo, leglist2)
         elif cons_N == None and cons_S == None:
             print("No symmetry used in site 'sixparton'. ")
-            leg = npc.LegCharge.from_trivial(64)
+            leg = npc.LegCharge.from_trivial(16)
         else:
             raise ValueError("Check your conserve quantities. ")
 
         names = ['empty']+combinations #now names are the str form of 64 basis
 
         #operators
-        id64 = np.eye(64)
+        id16 = np.eye(len(names))
 
-        JW = np.eye(64)
-        for i in range(1,64):
+        JW = np.eye(len(names))
+        for i in range(1,len(names)):
             if len(names[i]) %2 == 1:
                 JW[i,i] = -1
         
-        Fu = fmatrix('u',names); Fv = fmatrix('v',names); Fw = fmatrix('w',names); 
+        Fw = fmatrix('w',names); 
         Fx = fmatrix('x',names); Fy = fmatrix('y',names); Fz = fmatrix('z',names); 
         
-        audag = adaggermatrix('u',names); avdag = adaggermatrix('v',names); awdag = adaggermatrix('w',names); 
+        awdag = adaggermatrix('w',names); 
         axdag = adaggermatrix('x',names); aydag = adaggermatrix('y',names); azdag = adaggermatrix('z',names); 
         
-        cudag = audag
-        cvdag = avdag @ Fu
-        cwdag = awdag @ Fv @ Fu
-        cxdag = axdag @ Fw @ Fv @ Fu
-        cydag = aydag @ Fx @ Fw @ Fv @ Fu
-        czdag = azdag @ Fy @ Fx @ Fw @ Fv @ Fu
+        cwdag = awdag
+        cxdag = axdag @ Fw
+        cydag = aydag @ Fx @ Fw
+        czdag = azdag @ Fy @ Fx @ Fw
         
         #print('Should be true', np.allclose(Fz@Fy@Fx@Fw@Fv@Fu,JW))
         
-        cu = cudag.T; cv = cvdag.T; cw = cwdag.T; cx = cxdag.T; cy = cydag.T; cz = czdag.T; 
+        cw = cwdag.T; cx = cxdag.T; cy = cydag.T; cz = czdag.T; 
         
-        ops = dict(id64=id64, JW=JW, 
-                   cudag=cudag, cvdag=cvdag, cwdag=cwdag, cxdag=cxdag, cydag=cydag, czdag=czdag, 
-                   cu=cu, cv=cv, cw=cw, cx=cx, cy=cy, cz=cz)
+        ops = dict(id16=id16, JW=JW, 
+                   cwdag=cwdag, cxdag=cxdag, cydag=cydag, czdag=czdag, 
+                   cw=cw, cx=cx, cy=cy, cz=cz)
         
         Site.__init__(self, leg, names, **ops)
         
@@ -282,7 +280,7 @@ class MPOMPS():
                 #init = [1,1] + [0]*(L-2) #even parity
                 init = [0] * L #all empty
             if self.pbc == 1:
-                init = [63] + [0]*(L-1) #a_{1,u}^\dagger a_{1,v}^\dagger ... a_{1,z}^\dagger \ket{0}_a
+                init = [15] + [0]*(L-1) #a_{1,u}^\dagger a_{1,v}^\dagger ... a_{1,z}^\dagger \ket{0}_a
         print("the initial state is", init)
         site = self.site
         self.init_psi = MPS.from_product_state([site]*L, init)
@@ -305,7 +303,7 @@ class MPOMPS():
         mpo = []
         L = self.L
         
-        op_dict = {'u': ('cudag', 'cu'), 'v': ('cvdag', 'cv'), 'w': ('cwdag', 'cw'), 
+        op_dict = {'w': ('cwdag', 'cw'), 
                    'x': ('cxdag', 'cx'), 'y': ('cydag', 'cy'), 'z': ('czdag', 'cz')}
         
         t0 = npc.zeros(legs_first, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
@@ -318,7 +316,7 @@ class MPOMPS():
         
         for i in range(1,L-1):
             ti = npc.zeros(legs_bulk, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
-            ti[0,0,:,:] = self.site.get_op('id64')
+            ti[0,0,:,:] = self.site.get_op('id16')
             if flavor in op_dict:
                 cr, an = op_dict[flavor]
                 ti[1, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
@@ -327,7 +325,7 @@ class MPOMPS():
                 
         i = L-1
         tL = npc.zeros(legs_last, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
-        tL[0,0,:,:] = self.site.get_op('id64')
+        tL[0,0,:,:] = self.site.get_op('id16')
         if flavor in op_dict:
             cr, an = op_dict[flavor]
             tL[1, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
@@ -365,7 +363,7 @@ class MPOMPS():
         nmode = self._U.shape[0]
         print("MPO-MPS application start")
         
-        flavorlist = ['u','v','w','x','y','z']
+        flavorlist = ['w','x','y','z']
         for m in range(nmode):
             for flavor in flavorlist:
                 err, self.psi = self.mpomps_step_1time(m, flavor)
@@ -419,11 +417,11 @@ def GutzwillerProjectionParton2Spin(partonpsi):
     cons_N, cons_S = partonsite.conserve
     partonleg = partonsite.leg
     
-    so6gen, cmn = get_opr_list()
-    spinsite = SU4HalfFillingSite(so6gen, cons_N, cons_S)
+    so4gen, cmn = get_so4_opr_list()
+    spinsite = SO4Site(so4gen, cons_N, cons_S)
     spinleg = spinsite.leg
     
-    middleleg = npc.LegCharge.from_trivial(6)
+    middleleg = npc.LegCharge.from_trivial(4)
     
     if cons_N == 'Z2' and cons_S == 'flavor':
         qtotal = [0, 0]
@@ -435,18 +433,17 @@ def GutzwillerProjectionParton2Spin(partonpsi):
     projector[1,2] = 1
     projector[2,3] = 1
     projector[3,4] = 1
-    projector[4,5] = 1
-    projector[5,6] = 1
-    
-    #change the SO(6) site to SU(4) 6-dim representation site
+
+    #change the SO(6) site (n1,n2,n3,n4) to SU(2) \times SU(2) standard representation (uu,ud,du,dd) site
     unitary = npc.zeros([spinleg, middleleg.conj()], qtotal=qtotal, labels=['p','p*'], dtype=complex)
-    unitary[0,4] = 1; unitary[0,5] = 1j
-    unitary[1,0] = 1; unitary[1,1] = 1j
-    unitary[2,2] = 1; unitary[2,3] = 1j
-    unitary[3,2] = 1; unitary[3,3] = -1j
-    unitary[4,0] = -1; unitary[4,1] = 1j
-    unitary[5,4] = 1; unitary[5,5] = -1j
+    efac = np.exp(1j*np.pi/4)
+    unitary[0,0] = efac; unitary[0,3] = -efac
+    unitary[1,0] = np.conjugate(efac); unitary[1,3] = np.conjugate(efac)
+    unitary[2,1] = -np.conjugate(efac); unitary[2,2] = np.conjugate(efac)
+    unitary[3,1] = efac; unitary[3,2] = efac
     unitary *= np.sqrt(1/2)
+
+    unitary = unitary.conj().transpose()
     
     L = partonpsi.L
     spinpsi = MPS.from_product_state([spinsite]*L, [0]*L)
@@ -461,7 +458,7 @@ def GutzwillerProjectionParton2Spin(partonpsi):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("-lx", type=int, default=6)
+    parser.add_argument("-lx", type=int, default=8)
     parser.add_argument("-chi", type=float, default=1.)
     parser.add_argument("-delta", type=float, default=1.)
     parser.add_argument("-lamb", type=float, default=0.)
@@ -470,7 +467,7 @@ if __name__ == "__main__":
     parser.add_argument("-sweeps", type=int, default=6)
     parser.add_argument("-pbc", type=int, default=-1)
     parser.add_argument("-J", type=float, default=1.)
-    parser.add_argument("-K", type=float, default=0.1666666667)
+    parser.add_argument("-K", type=float, default=0.25)
     parser.add_argument("-verbose", type=int, default=1)
     args = parser.parse_args()
     
@@ -548,11 +545,10 @@ if __name__ == "__main__":
     gppsimlwo_pbc = GutzwillerProjectionParton2Spin(psimlwo_pbc)
     print("Gutzwiller projected MLWO MPO-MPS result is", gppsimlwo_pbc)
     
-    '''
     print(" ")
-    print("----------SO(6) Spin1 model DMRG---------")
+    print("----------SO(4) Spin1 model DMRG---------")
     params_dmrg = dict(cons_N=None, cons_S=None, Lx = lx, pbc=pbc1, J=J, K=K, D=Ddmrg, sweeps=sweeps, verbose=verbose)
-    so6dmrgmodel = BBQJK(params_dmrg)
+    so6dmrgmodel = BBQJKSO4(params_dmrg)
     psidmrg, Edmrg = so6dmrgmodel.run_dmrg()
     psidmrg2, Edmrg2 = so6dmrgmodel.run_dmrg_orthogonal([psidmrg])
     print("SO(6) DMRG results")
@@ -564,7 +560,7 @@ if __name__ == "__main__":
     bbqmpo = so6dmrgmodel.calc_H_MPO()
     #print("the overlap of psidmrg and psidmrg2", psidmrg.overlap(psidmrg2))
     print(" ")
-    print("the sandwich of projected psimlwo_apbc and SO(6) MPO is", bbqmpo.expectation_value(gppsimlwo_apbc)+Econst)
+    print("the sandwich of projected psimlwo_apbc and SO(6) MPO is", bbqmpo.expectation_value(gppsimlwo_apbc))
 
     print("the overlap of psidmrg and gppsimlwo_apbc", psidmrg.overlap(gppsimlwo_apbc))
 
@@ -572,7 +568,7 @@ if __name__ == "__main__":
 
     print("check overlap", psidmrg.overlap(gppsimlwo_apbc)**2, "+", psidmrg2.overlap(gppsimlwo_apbc)**2, "=", psidmrg.overlap(gppsimlwo_apbc)**2+psidmrg2.overlap(gppsimlwo_apbc)**2)
     print(" ")
-    print("the sandwich of projected psimlwo and SO(6) MPO is", bbqmpo.expectation_value(gppsimlwo_pbc)+Econst)
+    print("the sandwich of projected psimlwo and SO(6) MPO is", bbqmpo.expectation_value(gppsimlwo_pbc))
 
     print("the overlap of psidmrg and gppsimlwo_pbc", psidmrg.overlap(gppsimlwo_pbc))
 
@@ -580,7 +576,6 @@ if __name__ == "__main__":
 
     print("check overlap", psidmrg.overlap(gppsimlwo_pbc)**2, "+", psidmrg2.overlap(gppsimlwo_pbc)**2, "=", psidmrg.overlap(gppsimlwo_pbc)**2+psidmrg2.overlap(gppsimlwo_pbc)**2)
     print(" ")
-    '''
     
     #print("check overlap of projected apbc and pbc", gppsimlwo_apbc.overlap(gppsimlwo_pbc))
     #print("check overlap of unprojected apbc and pbc", psimlwo_apbc.overlap(psimlwo_pbc))
