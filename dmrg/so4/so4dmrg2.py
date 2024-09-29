@@ -1,9 +1,9 @@
 """
 SO4 chain DMRG code compact version for HPC use. As a copy of so6dmrg.py
 
-Puiyuen 240918-240924
+Puiyuen 240926-
 
-This is a resource killer version, dont use it on HPC. Use so4dmrg.py instead.
+Change the basis into SO(4) basis
 """
 import numpy as np
 import numpy.linalg as LA
@@ -18,6 +18,9 @@ from tenpy.linalg.charges import LegCharge, ChargeInfo
 from tenpy.algorithms import dmrg
 from tenpy.tools.params import asConfig
 import pickle
+import time
+
+start_time = time.time()
 
 def get_so4_opr_list():
     sigmax = np.array([[0, 1], [1, 0]])
@@ -37,25 +40,84 @@ def get_so4_opr_list():
     L6 = -np.kron(Sz, id) + np.kron(id, Sz)
 
     Loprs = [L1, L2, L3, L4, L5, L6]
+    coe_list = []
 
-    return Loprs
+    for a in range(6):
+        for b in range(6):
+            LiLi = Loprs[a] @ Loprs[b]
+            Amat = np.zeros((16, len(Loprs)), dtype=complex)
+            B = LiLi.reshape(-1,1)
+            for l in range(len(Loprs)):
+                Amat[:,l] = Loprs[l].reshape(-1,1)[:,0]
+            pcoe, resi, rank, sing = LA.lstsq(Amat, B, rcond=None)
+            if len(resi)!=0 and resi[0]>1e-10:
+                Loprs.append(LiLi)
+                pcoe = np.append(np.zeros((len(Loprs)-1, 1)),1).reshape(len(Loprs),1)
+                coe_list.append(pcoe)
+            else:
+                coe_list.append(pcoe)
+    
+    efac = np.exp(1j*np.pi/4)
+    U = (1/np.sqrt(2))*np.array([[efac, 0, 0, -efac],
+              [np.conjugate(efac), 0, 0, np.conjugate(efac)],
+              [0, -np.conjugate(efac), np.conjugate(efac), 0],
+              [0, efac, efac, 0]])
+    Loprs_new = []
+    for m in range(len(Loprs)):
+        Loprs_new.append(U @ Loprs[m] @ np.conjugate(U).T)
+
+    coe_list_new = []
+    for a in range(6):
+        for b in range(6):
+            LiLi = Loprs_new[a] @ Loprs_new[b]
+            Amat = np.zeros((16, len(Loprs_new)), dtype=complex)
+            B = LiLi.reshape(-1,1)
+            for l in range(len(Loprs_new)):
+                Amat[:,l] = Loprs_new[l].reshape(-1,1)[:,0]
+            pcoe = LA.solve(Amat, B)
+            coe_list_new.append(pcoe)
+    
+    coe_list = coe_list_new
+
+    for i in range(len(coe_list)):
+        coe_list[i] = coe_list[i].reshape(16)
+
+    def pvec(a,b):
+        return coe_list[6*a+b] #a,b=0,1,2,3,4,5
+    
+    cmn = np.zeros((16,16), dtype=complex)
+
+    P = dict()
+    for a in range(6):
+        for b in range(6):
+            P[(a,b)] = pvec(a,b)
+    
+    for m in range(16):
+        for n in range(16):
+            for a in range(6):
+                for b in range(6):
+                    cmn[m,n] += P[(a,b)][m] * P[(a,b)][n]
+
+    return Loprs_new, cmn
 
 class SO4Site(Site):
-    def __init__(self, cons_N=None, cons_S=None):
+    def __init__(self, so4g, cons_N=None, cons_S=None):
         self.conserve = [cons_N, cons_S]
         self.cons_N = cons_N
         self.cons_S = cons_S
+        self.so4g = so4g
 
-        leg = npc.LegCharge.from_trivial(4)
-        L6list = get_so4_opr_list()
+        if self.cons_N is None and self.cons_S == 'U1':
+            #chinfo = npc.ChargeInfo([1,1], ['S','T'])
+            #leg = npc.LegCharge.from_qflat(chinfo, [[-1,0],[0,-1],[0,1],[1,0]])
+            chinfo = npc.ChargeInfo([1], ['S'])
+            leg = npc.LegCharge.from_qflat(chinfo, [[-1],[-1],[1],[1]])
+        elif self.cons_N is None and self.cons_S is None:
+            leg = npc.LegCharge.from_trivial(4)
         
         ops = dict()
-        for i in range(len(L6list)):
-            ops['L{}'.format(i)] = L6list[i] #linears
-        
-        for a in range(6):
-            for b in range(6):
-                ops['L{}'.format(6+6*a+b)] = L6list[a] @ L6list[b] #quadratics
+        for i in range(len(self.so4g)):
+            ops['L{}'.format(i)] = self.so4g[i]
 
         names = ['1u2u', '1d2u', '1u2d', '1d2d']
         Site.__init__(self, leg, names, **ops)
@@ -68,7 +130,7 @@ class BBQJKSO4(CouplingModel):
         print(model_params)
         model_params = asConfig(model_params, self.__class__.__name__)
         self.model_params = model_params
-        self.Lx = model_params.get('Lx', 8)
+        self.Lx = model_params.get('Lx', 12)
         self.S = model_params.get('S', 1)
         self.bc = model_params.get('bc', 'periodic')
         self.J = model_params.get('J', 1)
@@ -77,8 +139,9 @@ class BBQJKSO4(CouplingModel):
         self.D = model_params.get('D', 200)
         self.sweeps = model_params.get('sweeps', 10)
         
+        self.so4_generators, self.c_mn = get_so4_opr_list()
 
-        site = SO4Site(cons_N=None, cons_S=None)
+        site = SO4Site(self.so4_generators, cons_N=None, cons_S='U1')
         self.sites = [site] * self.Lx
         self.lat = Chain(self.Lx, site, bc=self.bc)
         CouplingModel.__init__(self, self.lat, explicit_plus_hc=False)
@@ -104,8 +167,9 @@ class BBQJKSO4(CouplingModel):
             for a in range(6):
                 self.add_coupling_term(J, i0, i1, "L"+str(a), "L"+str(a))
             
-            for a in range(6,42):
-                self.add_coupling_term(K, i0, i1, "L"+str(a), "L"+str(a))
+            for m in range(16):
+                for n in range(16):
+                    self.add_coupling_term(K*np.round(self.c_mn[m,n],6), i0, i1, "L"+str(m), "L"+str(n))
     
     def run_dmrg(self, **kwargs):
         mixer      = kwargs.get('mixer', True)
@@ -152,7 +216,7 @@ if __name__ == "__main__":
     #parsers
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("-lx", type=int, default=16)
+    parser.add_argument("-lx", type=int, default=8)
     parser.add_argument("-J", type=float, default=1.)
     parser.add_argument("-K", type=float, default=1/4)
     parser.add_argument("-D", type=int, default=200)
@@ -193,3 +257,6 @@ if __name__ == "__main__":
         print("DMRG psi", psi_dmrg)
 
         print("entropy", psi_dmrg.entanglement_entropy())
+
+    end_time = time.time()
+    print("runtime", end_time-start_time)

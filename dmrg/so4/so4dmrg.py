@@ -17,6 +17,9 @@ from tenpy.algorithms import dmrg
 from tenpy.tools.params import asConfig
 import pickle
 
+import time
+start_time = time.time()
+
 def get_so4_opr_list():
     sigmax = np.array([[0, 1], [1, 0]])
     sigmay = np.array([[0, -1j], [1j, 0]])
@@ -96,8 +99,8 @@ class SO4Site(Site):
         self.so4g = so4g
 
         if self.cons_N is None and self.cons_S == 'U1':
-            chinfo = npc.ChargeInfo([1], ['S'])
-            leg = npc.LegCharge.from_qflat(chinfo, [0,1,-1,0])
+            chinfo = npc.ChargeInfo([1,1], ['S','T'])
+            leg = npc.LegCharge.from_qflat(chinfo, [[-1,0],[0,-1],[0,1],[1,0]])
         elif self.cons_N is None and self.cons_S is None:
             leg = npc.LegCharge.from_trivial(4)
         
@@ -243,3 +246,6 @@ if __name__ == "__main__":
         print("DMRG psi", psi_dmrg)
 
         print("entropy", psi_dmrg.entanglement_entropy())
+
+    end_time = time.time()
+    print("runtime", end_time-start_time)
