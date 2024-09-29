@@ -1,7 +1,7 @@
 """
 The MPO-MPS method for SO(6) BBQ model
 
-Puiyuen 2024.08.27-
+Puiyuen 2024.09.29
     2024.09.04: finished MPOMPS with no symmetry used. The site for DMRG is no longer named SO6Site, but SU4HalfFillingSite.
     2024.09.05: start to check the PBC case, making two ground states at a time. 
 "I will make it better"
@@ -465,7 +465,7 @@ if __name__ == "__main__":
     parser.add_argument("-Dmpos", type=int, default=64)
     parser.add_argument("-Ddmrg", type=int, default=216)
     parser.add_argument("-sweeps", type=int, default=6)
-    parser.add_argument("-pbc", type=int, default=-1)
+    parser.add_argument("-pbc", type=int, default=2)
     parser.add_argument("-J", type=float, default=1.)
     parser.add_argument("-K", type=float, default=0.25)
     parser.add_argument("-verbose", type=int, default=1)
@@ -698,3 +698,20 @@ if __name__ == "__main__":
         tpsi1 = apply_mpo(transop, tpsi1)
         tpsi1.canonical_form()
         print("<projected_apbc|T|projected_apbc> is", gppsimlwo_apbc.overlap(tpsi1))
+
+        site = psimlwo_apbc.sites[0]
+        transop = trnslop_mpo(site, lx)
+        tpsi1 = deepcopy(psimlwo_apbc)
+        tpsi1 = apply_mpo(transop, tpsi1)
+        tpsi1.canonical_form()
+        print("<unprojected_pbc|T|unprojected_apbc> is", psimlwo_pbc.overlap(tpsi1))
+
+        tpsi1 = deepcopy(psimlwo_pbc)
+        tpsi1 = apply_mpo(transop, tpsi1)
+        tpsi1.canonical_form()
+        print("<unprojected_pbc|T|unprojected_pbc> is", psimlwo_pbc.overlap(tpsi1))
+
+        tpsi1 = deepcopy(psimlwo_apbc)
+        tpsi1 = apply_mpo(transop, tpsi1)
+        tpsi1.canonical_form()
+        print("<unprojected_apbc|T|unprojected_apbc> is", psimlwo_apbc.overlap(tpsi1))
