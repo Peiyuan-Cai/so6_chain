@@ -652,6 +652,59 @@ if __name__ == "__main__":
                 right = npc.tensordot(right, bt, axes=(('p*', 'p')))  
 
             return [left] +  [bulk]*(L-2) +  [right] 
+        
+        def trnslop_mpo_fermion(site, L=2, **kwargs):
+            bc = kwargs.get('bc', 'pbc')    
+            assert L>1
+            leg = site.leg
+            chinfo = leg.chinfo
+            zero_div = [0]*chinfo.qnumber
+            from tenpy.linalg.charges import LegPipe, LegCharge
+            cleg = LegPipe([leg, leg.conj()], sort=False, bunch=False).to_LegCharge()
+            nleg = npc.LegCharge.from_qflat(chinfo, [zero_div])
+            
+            swap = npc.zeros([leg, leg.conj(), leg, leg.conj()], qtotal=zero_div, labels=['p1', 'p1*', 'p2', 'p2*']) 
+            for _i in range( site.dim ):
+                for _j in range( site.dim ):
+                    print(_i, _j)
+                    if _i == 1 and _j == 1:
+                        swap[_j,_i,_i,_j] = -1
+                    else:
+                        swap[_j,_i,_i,_j] = 1
+                    
+            reshaper = npc.zeros([leg, leg.conj(), cleg.conj()], qtotal=zero_div, labels=['p', 'p*', '(p*.p)'] )
+            for _i in range( site.dim ):
+                for _j in range( site.dim ):
+                    idx = _i* site.dim + _j 
+                    reshaper[_i,_j,idx] = 1
+                        
+            swap = npc.tensordot(reshaper.conj(), swap, axes=((0,1),(0,1)))
+            swap.ireplace_labels(['(p.p*)'], ['p1.p1*'])
+            swap = npc.tensordot(swap, reshaper.conj(), axes=((1,2),(0,1)))
+            swap.ireplace_labels(['(p.p*)'], ['p2.p2*'])
+            
+            left, right = npc.qr(swap)
+                
+            left  = npc.tensordot(reshaper, left, axes=((2), (0)))
+            left.ireplace_labels([None], ['wR'])
+            
+            right = npc.tensordot(right, reshaper, axes=((1), (2)))
+            right.ireplace_labels([None], ['wL'])
+            
+            bulk = npc.tensordot(right, left, axes=('p*','p'))
+
+            if bc == 'pbc':
+                bt = npc.zeros([nleg, leg, leg.conj()], qtotal=zero_div, labels=['wL', 'p', 'p*',])
+                for _i in range( site.dim ):
+                    bt[0,_i,_i] = 1
+                left = npc.tensordot(bt, left, axes=(('p*', 'p')))
+            
+                bt = npc.zeros([leg, leg.conj(), nleg.conj()], qtotal=zero_div, labels=['p', 'p*', 'wR'])
+                for _i in range( site.dim ):
+                    bt[_i,_i,0] = 1
+                right = npc.tensordot(right, bt, axes=(('p*', 'p')))  
+
+            return [left] +  [bulk]*(L-2) +  [right] 
 
         def apply_mpo(mpo, mps, i0=0):
             """
@@ -700,7 +753,7 @@ if __name__ == "__main__":
         print("<projected_apbc|T|projected_apbc> is", gppsimlwo_apbc.overlap(tpsi1))
 
         site = psimlwo_apbc.sites[0]
-        transop = trnslop_mpo(site, lx)
+        transop = trnslop_mpo_fermion(site, lx)
         tpsi1 = deepcopy(psimlwo_apbc)
         tpsi1 = apply_mpo(transop, tpsi1)
         tpsi1.canonical_form()
