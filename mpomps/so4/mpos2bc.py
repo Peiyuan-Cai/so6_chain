@@ -752,6 +752,7 @@ if __name__ == "__main__":
         tpsi1.canonical_form()
         print("<projected_apbc|T|projected_apbc> is", gppsimlwo_apbc.overlap(tpsi1))
 
+        '''
         site = psimlwo_apbc.sites[0]
         transop = trnslop_mpo_fermion(site, lx)
         tpsi1 = deepcopy(psimlwo_apbc)
@@ -768,3 +769,4 @@ if __name__ == "__main__":
         tpsi1 = apply_mpo(transop, tpsi1)
         tpsi1.canonical_form()
         print("<unprojected_apbc|T|unprojected_apbc> is", psimlwo_apbc.overlap(tpsi1))
+        '''
