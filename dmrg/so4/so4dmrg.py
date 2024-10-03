@@ -303,10 +303,12 @@ class BBQJKSO4(CouplingModel):
         self.verbose = model_params.get('verbose', 2)
         self.D = model_params.get('D', 200)
         self.sweeps = model_params.get('sweeps', 10)
+        self.cons_N = model_params.get('cons_N', None)
+        self.cons_S = model_params.get('cons_S', 'U1')
         
         self.so4_generators, self.c_mn, self.d_mn = get_so4_opr_list_new()
 
-        site = SO4Site(self.so4_generators, cons_N=None, cons_S='U1')
+        site = SO4Site(self.so4_generators, cons_N=self.cons_N, cons_S=self.cons_S)
         self.sites = [site] * self.Lx
         self.lat = Chain(self.Lx, site, bc=self.bc)
         CouplingModel.__init__(self, self.lat, explicit_plus_hc=False)
@@ -410,7 +412,7 @@ if __name__ == "__main__":
     else:
         raise "pbc must be 1(periodic) or 0(open)"
     
-    model_paras = dict(cons_N=None, cons_S=None, Lx = lx, bc=bc, J=J, K=K, D=D, sweeps=sweeps, verbose=2)
+    model_paras = dict(cons_N=None, cons_S='U1', Lx = lx, bc=bc, J=J, K=K, D=D, sweeps=sweeps, verbose=2)
     so4bbq = BBQJKSO4(model_paras)
 
     if args.job == 'dmrg':
