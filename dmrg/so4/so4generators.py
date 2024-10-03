@@ -1,5 +1,6 @@
 import numpy as np
 import numpy.linalg as LA
+import scipy.linalg as spLA
 
 sigmax = np.array([[0, 1], [1, 0]])
 sigmay = np.array([[0, -1j], [1j, 0]])
@@ -63,3 +64,11 @@ for m in range(len(Loprs)):
     Loprs_new.append(U @ Loprs[m] @ np.conjugate(U).T)
     print("the",m,"th new L operator")
     print(Loprs_new[m])
+
+eigvals, eigvecs = spLA.eigh(Loprs_new[0], Loprs_new[5])
+print(eigvecs)
+
+for m in range(len(Loprs)):
+    Loprs_new.append(U @ Loprs[m] @ np.conjugate(U).T)
+    print("the",m,"th newnew L operator")
+    print(np.conjugate(eigvecs).T @ Loprs_new[m] @ eigvecs)
