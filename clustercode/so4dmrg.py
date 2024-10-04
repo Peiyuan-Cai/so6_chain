@@ -429,7 +429,8 @@ if __name__ == "__main__":
         #small measurements along with DMRG, not printing local operators anymore
         print("entropy", psi_dmrg.entanglement_entropy())
         print("<psi2|psi1>", psi_dmrg.overlap(gs_dmrg))
-        print("energy difference", np.abs(E - gs_dmrg.expectation_value(so4bbq.calc_H_MPO())))
+        bbqmpo = so4bbq.calc_H_MPO()
+        print("energy difference", np.abs(E - bbqmpo.expectation_value(gs_dmrg)))
 
     if args.job == 'dimercheck':
         print("----------Start job dimer check----------")
@@ -544,6 +545,8 @@ if __name__ == "__main__":
         
         site = psi1.sites[0]
         transop = trnslop_mpo(site, lx)
+        
+        psi1.canonical_form()
         tpsi1 = deepcopy(psi1)
         tpsi1 = apply_mpo(transop,tpsi1)
         tpsi1.canonical_form()
@@ -557,6 +560,7 @@ if __name__ == "__main__":
         #print("<psi1|TT|psi1>", psi1.overlap(ttpsi1))
         #print("<psi2|TT|psi1>", psi2.overlap(ttpsi1))
 
+        psi2.canonical_form()
         tpsi2 = deepcopy(psi2)
         tpsi2 = apply_mpo(transop, tpsi2)
         tpsi2.canonical_form()
