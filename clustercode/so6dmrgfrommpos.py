@@ -245,11 +245,14 @@ class BBQJK(CouplingModel):
         self.verbose = model_params.get('verbose', 2)
         self.D = model_params.get('D', 64)
         self.sweeps = model_params.get('sweeps', 6)
+        self.cons_N = model_params.get('cons_N', None)
+        self.cons_S = model_params.get('cons_S', 'U1')
+        self.init = model_params.get('init', None)
         
         #defined as self variables 240716
         self.so6_generators, self.c_mn = get_opr_list()
 
-        site = SO6Site(self.so6_generators, cons_N=None, cons_S='U1')
+        site = SO6Site(self.so6_generators, cons_N=self.cons_N, cons_S=self.cons_S)
         self.sites = [site] * self.Lx
         self.lat = Chain(self.Lx, site, bc=self.bc)
         CouplingModel.__init__(self, self.lat, explicit_plus_hc=False)
@@ -300,7 +303,7 @@ class BBQJK(CouplingModel):
                            min_sweeps=min_sweeps,
                            verbose=2)
 
-        init = kwargs.get('init', None)
+        init = self.init
         if init is None:
             N = self.lat.N_sites
             if N%6==0 and N>0:
@@ -314,6 +317,7 @@ class BBQJK(CouplingModel):
         elif isinstance(init, str):
             with open (init, 'rb') as f:
                 psiinit = pickle.load(f)
+            print('init loaded', psiinit)
             dmrg_params['mixer'] = False
         elif isinstance(init, list):
             psiinit = MPS.from_product_state(self.lat.mps_sites(), init)            
@@ -393,7 +397,7 @@ if __name__ == "__main__":
     parser.add_argument("-D", type=int, default=64)
     parser.add_argument("-pbc", type=int, default=1)
     parser.add_argument("-sweeps", type=int, default=10)
-    parser.add_argument("-job", type=str, default='dmrg')
+    parser.add_argument("-job", type=str, default='mposdmrg')
     parser.add_argument("-verbose", type=int, default=1)
     args = parser.parse_args()
 
@@ -437,7 +441,7 @@ if __name__ == "__main__":
     
     if args.job == 'mposdmrg':
         print("----------Start Job DMRG from MPOMPS initialized----------")
-        model_paras['init'] = homepath+'psimpos_lx{}_1'.format(lx)
+        model_paras['init'] = homepath+'/psimpos_lx{}_1'.format(lx)
         so6bbq = BBQJK(model_paras)
 
         psi_dmrg, E = so6bbq.run_dmrg()
@@ -454,7 +458,7 @@ if __name__ == "__main__":
     if args.job == 'mposdmrg2':
         print("----------Start Job DMRG2 from MPOMPS initialized----------")
         print("----------Designed for the MPS point, the second time DMRG----------")
-        model_paras['init'] = 'psimpos_lx{}_2'.format(lx)
+        model_paras['init'] = homepath+'/psimpos_lx{}_2'.format(lx)
         so6bbq = BBQJK(model_paras)
 
         #load DMRG state
