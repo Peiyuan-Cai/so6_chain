@@ -173,7 +173,7 @@ def fmatrix(flavor, basis):
 ---------------------------6 parton site designed function end-----------------------------
 '''
 
-class sixparton(Site):
+class partonsite(Site):
     def __init__(self, cons_N=None, cons_S=None):
         """
         The 6 in 1 parton site for MPO-MPS method, meaning that we are doing 6 decoupled Kitaev chain, filling 1 parton each site. 
@@ -270,7 +270,7 @@ class MPOMPS():
 
         self.L = self.Llat = u.shape[0] #the length of real sites
         
-        self.site = sixparton(self.cons_N, self.cons_S)
+        self.site = partonsite(self.cons_N, self.cons_S)
         self.init_mps()
     
     def init_mps(self, init=None):
@@ -333,14 +333,18 @@ class MPOMPS():
         
         return mpo
     
+    def get_mpo_U1U1(self, v, u, flavor):
+        chinfo = self.site.leg.chinfo
+        pleg = self.site.leg
+    
     def mpomps_step_1time(self, m, flavor):
         vm = self._V[:,m]
         um = self._U[:,m]
         mps = self.psi
         if self.cons_N is None and self.cons_S is None:
             mpo = self.get_mpo_trivial(vm, um, flavor)
-        elif self.cons_N=='Z2' and self.cons_S=='flavor':
-            mpo = self.get_mpo_Z2U1(vm, um, flavor)
+        elif self.cons_N==None and self.cons_S=='U1':
+            mpo = self.get_mpo_U1U1(vm, um, flavor)
         else:
             raise "Symmetry set of N and S is not allowed. "
         halflength = self.L//2
