@@ -3,6 +3,8 @@ SO6 chain DMRG code compact version for HPC use.
 
 Initialized by MPO-MPS results. 
 
+Running the code without good quantum number is a ROM consuming task.
+
 Puiyuen 240923
 """
 import numpy as np
