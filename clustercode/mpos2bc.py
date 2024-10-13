@@ -4,6 +4,8 @@ The MPO-MPS method for SO(6) BBQ model for HPC use
 generate two states with 0 and pi flux
 
 Puiyuen 2024.09.23
+
+20241013 default generate two states with 0 and pi flux: pbc=2
 """
 import matplotlib.pyplot as plt
 from tenpy.tools.params import asConfig
