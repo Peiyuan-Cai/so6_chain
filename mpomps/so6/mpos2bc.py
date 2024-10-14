@@ -107,7 +107,7 @@ class KitaevSingleChain():
 '''
 #a funtion to calculate the values in the sixparton flavor quantum number
 def flavor_qn(combination):
-    qn_map = {'u': -5/2, 'v': -3/2, 'w': -1/2, 'x': 1/2, 'y': 3/2, 'z': 5/2}
+    qn_map = {'u': -5, 'v': -3, 'w': -1, 'x': 1, 'y': 3, 'z': 5} #times 2 cause tenpy doesn't support half integer
     totalqn = 0
     for char in combination:
         totalqn += qn_map[char]
@@ -394,7 +394,7 @@ class MPOMPS():
         mps = self.psi
         if self.cons_N is None and self.cons_S is None:
             mpo = self.get_mpo_trivial(vm, um, flavor)
-        elif self.cons_N==None and self.cons_S=='flavor':
+        elif self.cons_N==None and self.cons_S=='U1':
             mpo = self.get_mpo_U1(vm, um, flavor)
         else:
             raise "Symmetry set of N and S is not allowed. "
@@ -418,14 +418,24 @@ class MPOMPS():
         nmode = self._U.shape[0]
         print("MPO-MPS application start")
         
-        flavorlist = ['u','v','w','x','y','z']
-        for m in range(nmode):
-            for flavor in flavorlist:
-                err, self.psi = self.mpomps_step_1time(m, flavor)
-                self.fidelity *= 1-err.eps
-                self.chi_max = np.max(self.psi.chi)
-                print( "applied the {}-th {} mode, the fidelity is {}, the largest bond dimension is {}. ".format( self.n_omode, flavor, self.fidelity, self.chi_max) )
-            self.n_omode += 1
+        if self.cons_N == None and self.cons_S == None:
+            flavorlist = ['u','v','w','x','y','z']
+            for m in range(nmode):
+                for flavor in flavorlist:
+                    err, self.psi = self.mpomps_step_1time(m, flavor)
+                    self.fidelity *= 1-err.eps
+                    self.chi_max = np.max(self.psi.chi)
+                    print( "applied the {}-th {} mode, the fidelity is {}, the largest bond dimension is {}. ".format( self.n_omode, flavor, self.fidelity, self.chi_max) )
+                self.n_omode += 1
+        elif self.cons_N == None and self.cons_S == 'U1':
+            qnlist = [-5, -3, -1, 1, 3, 5]
+            for m in range(nmode):
+                for qn in qnlist:
+                    err, self.psi = self.mpomps_step_1time(m, qn)
+                    self.fidelity *= 1-err.eps
+                    self.chi_max = np.max(self.psi.chi)
+                    print( "applied the {}-th {} mode, the fidelity is {}, the largest bond dimension is {}. ".format( self.n_omode, qn, self.fidelity, self.chi_max) )
+                self.n_omode += 1
 
 '''
 ------------------------------------------------------Extra functions---------------------------------------------
@@ -478,8 +488,8 @@ def GutzwillerProjectionParton2Spin(partonpsi):
     
     middleleg = npc.LegCharge.from_trivial(6)
     
-    if cons_N == 'Z2' and cons_S == 'flavor':
-        qtotal = [0, 0]
+    if cons_N == None and cons_S == 'U1':
+        qtotal = [0]
     else:
         qtotal = None
         
