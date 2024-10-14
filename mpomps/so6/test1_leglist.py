@@ -12,7 +12,7 @@ for i in range(1, len(characters) + 1):
 
 print(combinations)
 #print(len(combinations))
-'''
+
 def flavor_qn(combination):
     qn_map = {'u': -5/2, 'v': -3/2, 'w': -1/2, 'x': 1/2, 'y': 3/2, 'z': 5/2}
     totalqn = 0
@@ -27,6 +27,7 @@ for i in range(len(combinations)):
 print(flavorqn)
 print(len(flavorqn))
 
+'''
 leglist0 = [[0,0]]; leglist1 = []; leglist2 = []
 for i in range(len(flavorqn)):
     leglist1.append([1, flavorqn[i]])
