@@ -209,14 +209,14 @@ class sixparton(Site):
         for i in range(len(flavorqn)-1):
             leglist0.append([len(combinations[i]), flavorqn[i+1]])
 
-        if cons_N == 'N' and cons_S == 'flavor':
-            chinfo = npc.ChargeInfo([1, 1], ['N', 'flavor'])
+        if cons_N == 'N' and cons_S == 'U1':
+            chinfo = npc.ChargeInfo([1, 1], ['N', 'U1'])
             leg = npc.LegCharge.from_qflat(chinfo, leglist0)
         elif cons_N == 'Z2' and cons_S == 'flavor':
-            chinfo = npc.ChargeInfo([1, 1], ['Z2', 'flavor'])
+            chinfo = npc.ChargeInfo([1, 1], ['Z2', 'U1'])
             leg = npc.LegCharge.from_qflat(chinfo, leglist1)
-        elif cons_N == None and cons_S == 'flavor':
-            chinfo = npc.ChargeInfo([1], ['flavor'])
+        elif cons_N == None and cons_S == 'U1':
+            chinfo = npc.ChargeInfo([1], ['U1'])
             leg = npc.LegCharge.from_qflat(chinfo, leglist2)
         elif cons_N == None and cons_S == None:
             print("No symmetry used in site 'sixparton'. ")
@@ -335,14 +335,67 @@ class MPOMPS():
         
         return mpo
     
+    def get_mpo_U1(self, v, u, qn):
+        chinfo = self.site.leg.chinfo
+        pleg = self.site.leg #physical leg of parton site
+
+        firstleg = npc.LegCharge.from_qflat(chinfo, [[0]], 1)
+        lastleg = npc.LegCharge.from_qflat(chinfo, [[qn]], -1)
+        bulkleg = npc.LegCharge.from_qflat(chinfo, [[qn], [0]], 1)
+        #legs arrange in order 'wL', 'wR', 'p', 'p*'
+        legs_first = [firstleg, bulkleg.conj(), pleg, pleg.conj()]
+        legs_bulk = [bulkleg, bulkleg.conj(), pleg, pleg.conj()]
+        legs_last = [bulkleg, lastleg, pleg, pleg.conj()]
+        
+        mpo = []
+        L = self.L
+        
+        op_dict = {'u': ('cudag', 'cu'), 'v': ('cvdag', 'cv'), 'w': ('cwdag', 'cw'), 
+                   'x': ('cxdag', 'cx'), 'y': ('cydag', 'cy'), 'z': ('czdag', 'cz')}
+        
+        qn_dict = {-5: ('u', 'z'), -3: ('v', 'y'), -1: ('w', 'x'), 1: ('x', 'w'), 3: ('y', 'v'), 5: ('z', 'u')}
+        
+        t0 = npc.zeros(legs_first, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+        i = 0
+        if qn in qn_dict:
+            cr_op, an_op = qn_dict[qn]
+            cr = op_dict[cr_op][0]
+            an = op_dict[an_op][1]
+            t0[0, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
+        t0[0, 1, :, :] = self.site.get_op('JW')
+        mpo.append(t0)
+        
+        for i in range(1,L-1):
+            ti = npc.zeros(legs_bulk, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+            ti[0,0,:,:] = self.site.get_op('id64')
+            if qn in qn_dict:
+                cr_op, an_op = qn_dict[qn]
+                cr = op_dict[cr_op][0]
+                an = op_dict[an_op][1]
+                ti[1, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
+            ti[1, 1, :, :] = self.site.get_op('JW')
+            mpo.append(ti)
+            
+        i = L-1
+        tL = npc.zeros(legs_last, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+        tL[0,0,:,:] = self.site.get_op('id64')
+        if qn in qn_dict:
+            cr_op, an_op = qn_dict[qn]
+            cr = op_dict[cr_op][0]
+            an = op_dict[an_op][1]
+            tL[1, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
+        mpo.append(tL)
+        
+        return mpo
+    
     def mpomps_step_1time(self, m, flavor):
         vm = self._V[:,m]
         um = self._U[:,m]
         mps = self.psi
         if self.cons_N is None and self.cons_S is None:
             mpo = self.get_mpo_trivial(vm, um, flavor)
-        elif self.cons_N=='Z2' and self.cons_S=='flavor':
-            mpo = self.get_mpo_Z2U1(vm, um, flavor)
+        elif self.cons_N==None and self.cons_S=='flavor':
+            mpo = self.get_mpo_U1(vm, um, flavor)
         else:
             raise "Symmetry set of N and S is not allowed. "
         halflength = self.L//2
@@ -468,7 +521,7 @@ if __name__ == "__main__":
     parser.add_argument("-Dmpos", type=int, default=64)
     parser.add_argument("-Ddmrg", type=int, default=216)
     parser.add_argument("-sweeps", type=int, default=6)
-    parser.add_argument("-pbc", type=int, default=-1)
+    parser.add_argument("-pbc", type=int, default=2) #default=2 241014, generate two ground states at a time
     parser.add_argument("-J", type=float, default=1.)
     parser.add_argument("-K", type=float, default=0.1666666667)
     parser.add_argument("-verbose", type=int, default=1)
@@ -518,7 +571,7 @@ if __name__ == "__main__":
     wv, wu = Wannier_Z2(vmat.T, umat.T)
 
     print("----------MPO-MPS method: MLWO----------")
-    params_mpomps = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=Dmpos), pbc=pbc1)
+    params_mpomps = dict(cons_N=None, cons_S='U1', trunc_params=dict(chi_max=Dmpos), pbc=pbc1)
     mpos = MPOMPS(wv, wu, **params_mpomps)
     mpos.run()
     
@@ -539,7 +592,7 @@ if __name__ == "__main__":
     wv, wu = Wannier_Z2(vmat.T, umat.T)
 
     print("----------MPO-MPS method: MLWO----------")
-    params_mpomps = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=Dmpos), pbc=pbc2)
+    params_mpomps = dict(cons_N=None, cons_S='U1', trunc_params=dict(chi_max=Dmpos), pbc=pbc2)
     mpos = MPOMPS(wv, wu, **params_mpomps)
     mpos.run()
     
