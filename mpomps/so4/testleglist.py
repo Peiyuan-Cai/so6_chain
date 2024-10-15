@@ -61,3 +61,13 @@ for i in range(cdag.shape[0]):
     for j in range(cdag.shape[0]):
         if cdag[i,j] != 0:
             print('left',name[i],'right',name[j],'entry',cdag[i,j])
+
+def flavor_qn(combination):
+    qn_map = {'w': [-1,0], 'x': [0,-1], 'y': [0,1], 'z': [1,0]} #the tenpy dosen't support the half integer quantum number, so we use the integer to represent the half integer.
+    totalqn = [0,0]
+    for char in combination:
+        for i in range(len(totalqn)):
+            totalqn[i] += qn_map[char][i]
+    return totalqn
+
+print('flavorqn',flavor_qn('wxy'))
