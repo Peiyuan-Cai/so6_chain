@@ -83,6 +83,182 @@ def get_so4_opr_list():
 
     return Loprs, cmn
 
+def get_so4_opr_list_new():
+    sigmax = np.array([[0, 1], [1, 0]])
+    sigmay = np.array([[0, -1j], [1j, 0]])
+    sigmaz = np.array([[1, 0], [0, -1]])
+    id = np.eye(2)
+
+    Sx = 0.5 * sigmax
+    Sy = 0.5 * sigmay
+    Sz = 0.5 * sigmaz
+
+    L1 = -np.kron(Sz, id) - np.kron(id, Sz)
+    L2 = -np.kron(Sx, id) + np.kron(id, Sx)
+    L3 = -np.kron(Sy, id) - np.kron(id, Sy)
+    L4 = -np.kron(Sy, id) + np.kron(id, Sy)
+    L5 = +np.kron(Sx, id) + np.kron(id, Sx)
+    L6 = -np.kron(Sz, id) + np.kron(id, Sz)
+
+    Loprs = [L1, L2, L3, L4, L5, L6]
+    Lhatoprs = [
+    np.array([
+        [-1, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 1]
+    ]),
+    np.array([
+        [0, 1, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 1],
+        [0, 0, 0, 0]
+    ]),
+    np.array([
+        [0, 0, 0, 0],
+        [1, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 1, 0]
+    ]),
+    np.array([
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [-1, 0, 0, 0],
+        [0, -1, 0, 0]
+    ]),
+    np.array([
+        [0, 0, -1, 0],
+        [0, 0, 0, -1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]
+    ]),
+    np.array([
+        [0, 0, 0, 0],
+        [0, -1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 0]
+    ]),
+    np.array([
+        [1, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 1]
+    ]),
+    np.array([
+        [0, 1, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]
+    ]),
+    np.array([
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 1, 0]
+    ]),
+    np.array([
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 1, 0, 0]
+    ]),
+    np.array([
+        [0, 0, 1, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]
+    ]),
+    np.array([
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [1, 0, 0, 0]
+    ]),
+    np.array([
+        [0, 0, 0, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]
+    ]),
+    np.array([
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 0, 0]
+    ]),
+    np.array([
+        [0, 0, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]
+    ]),
+    np.array([
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+    ])
+]
+
+    coe_list = []
+    for a in range(6):
+        for b in range(6):
+            LiLi = Loprs[a] @ Loprs[b]
+            Amat = np.zeros((16, len(Lhatoprs)), dtype=complex)
+            B = LiLi.reshape(-1,1)
+            for l in range(len(Lhatoprs)):
+                Amat[:,l] = Lhatoprs[l].reshape(-1,1)[:,0]
+            pcoe = LA.solve(Amat, B)
+            coe_list.append(pcoe)
+
+    for i in range(len(coe_list)):
+        coe_list[i] = coe_list[i].reshape(16)
+
+    def pvec(a,b):
+        return coe_list[6*a+b] #a,b=0,1,2,3,4,5
+    
+    cmn = np.zeros((16,16), dtype=complex)
+
+    P = dict()
+    for a in range(6):
+        for b in range(6):
+            P[(a,b)] = pvec(a,b)
+    
+    for m in range(16):
+        for n in range(16):
+            for a in range(6):
+                for b in range(6):
+                    cmn[m,n] += P[(a,b)][m] * P[(a,b)][n]
+
+    coe_list_new = []
+    for a in range(6):
+        Li = Loprs[a]
+        Amat = np.zeros((16, len(Lhatoprs)), dtype=complex)
+        B = Li.reshape(-1,1)
+        for l in range(len(Lhatoprs)):
+            Amat[:,l] = Lhatoprs[l].reshape(-1,1)[:,0]
+        qcoe = LA.solve(Amat, B)
+        coe_list_new.append(qcoe)
+    
+    for i in range(len(coe_list_new)):
+        coe_list_new[i] = coe_list_new[i].reshape(16)
+
+    def qvec(a):
+        return coe_list_new[a]
+    
+    dmn = np.zeros((16,16), dtype=complex)
+    
+    Q = dict()
+    for a in range(6):
+        Q[a] = qvec(a)
+
+    for m in range(16):
+        for n in range(16):
+            for a in range(6):
+                dmn[m,n] += Q[a][m] * Q[a][n]
+
+    return Lhatoprs, cmn, dmn
+
 class SO4Site(Site):
     def __init__(self, so4g, cons_N=None, cons_S=None):
         self.conserve = [cons_N, cons_S]
