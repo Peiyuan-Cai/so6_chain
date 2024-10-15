@@ -298,7 +298,10 @@ class BBQJKSO4(CouplingModel):
         
         self.so4_generators, self.c_mn = get_so4_opr_list()
 
-        site = SO4Site(self.so4_generators, cons_N=None, cons_S=None)
+        self.cons_N = model_params.get('cons_N', None)
+        self.cons_S = model_params.get('cons_S', None)
+
+        site = SO4Site(self.so4_generators, cons_N=self.cons_N, cons_S=self.cons_S)
         self.sites = [site] * self.Lx
         self.lat = Chain(self.Lx, site, bc=self.bc)
         CouplingModel.__init__(self, self.lat, explicit_plus_hc=False)
