@@ -489,7 +489,7 @@ def GutzwillerProjectionParton2Spin(partonpsi):
     middleleg = npc.LegCharge.from_trivial(6)
     
     if cons_N == None and cons_S == 'U1':
-        qtotal = [0]
+        qtotal = None
     else:
         qtotal = None
         
