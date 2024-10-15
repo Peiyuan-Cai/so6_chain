@@ -107,7 +107,7 @@ class KitaevSingleChain():
 '''
 #a funtion to calculate the values in the sixparton flavor quantum number
 def flavor_qn(combination):
-    qn_map = {'w': -3/2, 'x': -1/2, 'y': 1/2, 'z': 3/2}
+    qn_map = {'w': -3, 'x': -1, 'y': 1, 'z': 3} #the tenpy dosen't support the half integer quantum number, so we use the integer to represent the half integer.
     totalqn = 0
     for char in combination:
         totalqn += qn_map[char]
@@ -209,14 +209,14 @@ class partonsite(Site):
         for i in range(len(flavorqn)-1):
             leglist0.append([len(combinations[i]), flavorqn[i+1]])
 
-        if cons_N == 'N' and cons_S == 'flavor':
-            chinfo = npc.ChargeInfo([1, 1], ['N', 'flavor'])
+        if cons_N == 'N' and cons_S == 'U1': #changed flavor into U1
+            chinfo = npc.ChargeInfo([1, 1], ['N', 'U1'])
             leg = npc.LegCharge.from_qflat(chinfo, leglist0)
-        elif cons_N == 'Z2' and cons_S == 'flavor':
-            chinfo = npc.ChargeInfo([1, 1], ['Z2', 'flavor'])
+        elif cons_N == 'Z2' and cons_S == 'U1':
+            chinfo = npc.ChargeInfo([1, 1], ['Z2', 'U1'])
             leg = npc.LegCharge.from_qflat(chinfo, leglist1)
-        elif cons_N == None and cons_S == 'flavor':
-            chinfo = npc.ChargeInfo([1], ['flavor'])
+        elif cons_N == None and cons_S == 'U1':
+            chinfo = npc.ChargeInfo([1], ['U1'])
             leg = npc.LegCharge.from_qflat(chinfo, leglist2)
         elif cons_N == None and cons_S == None:
             print("No symmetry used in site 'sixparton'. ")
@@ -333,9 +333,57 @@ class MPOMPS():
         
         return mpo
     
-    def get_mpo_U1U1(self, v, u, flavor):
+    def get_mpo_U1(self, v, u, qn):
         chinfo = self.site.leg.chinfo
         pleg = self.site.leg
+
+        firstleg = npc.LegCharge.from_qflat(chinfo, [[0]], 1)
+        lastleg = npc.LegCharge.from_qflat(chinfo, [[qn]], -1)
+        bulkleg = npc.LegCharge.from_qflat(chinfo, [[qn], [0]], 1)
+        #legs arrange in order 'wL', 'wR', 'p', 'p*'
+        legs_first = [firstleg, bulkleg.conj(), pleg, pleg.conj()]
+        legs_bulk = [bulkleg, bulkleg.conj(), pleg, pleg.conj()]
+        legs_last = [bulkleg, lastleg, pleg, pleg.conj()]
+        
+        mpo = []
+        L = self.L
+        
+        op_dict = {'w': ('cwdag', 'cw'), 'x': ('cxdag', 'cx'), 'y': ('cydag', 'cy'), 'z': ('czdag', 'cz')}
+        
+        qn_dict = {-3: ('w', 'z'), -1: ('x', 'y'), 1: ('y', 'x'), 3: ('z', 'w')}
+        
+        t0 = npc.zeros(legs_first, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+        i = 0
+        if qn in qn_dict:
+            cr_op, an_op = qn_dict[qn]
+            cr = op_dict[cr_op][0]
+            an = op_dict[an_op][1]
+            t0[0, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
+        t0[0, 1, :, :] = self.site.get_op('JW')
+        mpo.append(t0)
+        
+        for i in range(1,L-1):
+            ti = npc.zeros(legs_bulk, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+            ti[0,0,:,:] = self.site.get_op('id16')
+            if qn in qn_dict:
+                cr_op, an_op = qn_dict[qn]
+                cr = op_dict[cr_op][0]
+                an = op_dict[an_op][1]
+                ti[1, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
+            ti[1, 1, :, :] = self.site.get_op('JW')
+            mpo.append(ti)
+            
+        i = L-1
+        tL = npc.zeros(legs_last, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+        tL[0,0,:,:] = self.site.get_op('id16')
+        if qn in qn_dict:
+            cr_op, an_op = qn_dict[qn]
+            cr = op_dict[cr_op][0]
+            an = op_dict[an_op][1]
+            tL[1, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
+        mpo.append(tL)
+        
+        return mpo
     
     def mpomps_step_1time(self, m, flavor):
         vm = self._V[:,m]
@@ -344,7 +392,7 @@ class MPOMPS():
         if self.cons_N is None and self.cons_S is None:
             mpo = self.get_mpo_trivial(vm, um, flavor)
         elif self.cons_N==None and self.cons_S=='U1':
-            mpo = self.get_mpo_U1U1(vm, um, flavor)
+            mpo = self.get_mpo_U1(vm, um, flavor)
         else:
             raise "Symmetry set of N and S is not allowed. "
         halflength = self.L//2
@@ -367,14 +415,24 @@ class MPOMPS():
         nmode = self._U.shape[0]
         print("MPO-MPS application start")
         
-        flavorlist = ['w','x','y','z']
-        for m in range(nmode):
-            for flavor in flavorlist:
-                err, self.psi = self.mpomps_step_1time(m, flavor)
-                self.fidelity *= 1-err.eps
-                self.chi_max = np.max(self.psi.chi)
-                print( "applied the {}-th {} mode, the fidelity is {}, the largest bond dimension is {}. ".format( self.n_omode, flavor, self.fidelity, self.chi_max) )
-            self.n_omode += 1
+        if self.cons_N == None and self.cons_S == None:
+            flavorlist = ['w','x','y','z']
+            for m in range(nmode):
+                for flavor in flavorlist:
+                    err, self.psi = self.mpomps_step_1time(m, flavor)
+                    self.fidelity *= 1-err.eps
+                    self.chi_max = np.max(self.psi.chi)
+                    print( "applied the {}-th {} mode, the fidelity is {}, the largest bond dimension is {}. ".format( self.n_omode, flavor, self.fidelity, self.chi_max) )
+                self.n_omode += 1
+        elif self.cons_N == None and self.cons_S == 'U1':
+            qnlist = [-3, -1, 1, 3]
+            for m in range(nmode):
+                for qn in qnlist:
+                    err, self.psi = self.mpomps_step_1time(m, qn)
+                    self.fidelity *= 1-err.eps
+                    self.chi_max = np.max(self.psi.chi)
+                    print( "applied the {}-th {} mode, the fidelity is {}, the largest bond dimension is {}. ".format( self.n_omode, qn, self.fidelity, self.chi_max) )
+                self.n_omode += 1
 
 '''
 ------------------------------------------------------Extra functions---------------------------------------------
@@ -421,14 +479,15 @@ def GutzwillerProjectionParton2Spin(partonpsi):
     cons_N, cons_S = partonsite.conserve
     partonleg = partonsite.leg
     
-    so4gen, cmn = get_so4_opr_list()
+    so4gen, cmn, dmn = get_so4_opr_list_new()
     spinsite = SO4Site(so4gen, cons_N, cons_S)
     spinleg = spinsite.leg
     
     middleleg = npc.LegCharge.from_trivial(4)
     
-    if cons_N == 'Z2' and cons_S == 'flavor':
-        qtotal = [0, 0]
+    if cons_N == None and cons_S == 'U1':
+        qtotal = [[0,0]]
+        middleleg = spinleg
     else:
         qtotal = None
         
@@ -438,7 +497,7 @@ def GutzwillerProjectionParton2Spin(partonpsi):
     projector[2,3] = 1
     projector[3,4] = 1
 
-    #change the SO(6) site (n1,n2,n3,n4) to SU(2) \times SU(2) standard representation (uu,ud,du,dd) site
+    #change the SO(4) site (n1,n2,n3,n4) to SU(2) \times SU(2) standard representation (uu,ud,du,dd) site
     unitary = npc.zeros([spinleg, middleleg.conj()], qtotal=qtotal, labels=['p','p*'], dtype=complex)
     efac = np.exp(1j*np.pi/4)
     unitary[0,0] = efac; unitary[0,3] = -efac
@@ -519,7 +578,7 @@ if __name__ == "__main__":
     wv, wu = Wannier_Z2(vmat.T, umat.T)
 
     print("----------MPO-MPS method: MLWO----------")
-    params_mpomps = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=Dmpos), pbc=pbc1)
+    params_mpomps = dict(cons_N=None, cons_S='U1', trunc_params=dict(chi_max=Dmpos), pbc=pbc1)
     mpos = MPOMPS(wv, wu, **params_mpomps)
     mpos.run()
     
@@ -540,7 +599,7 @@ if __name__ == "__main__":
     wv, wu = Wannier_Z2(vmat.T, umat.T)
 
     print("----------MPO-MPS method: MLWO----------")
-    params_mpomps = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=Dmpos), pbc=pbc2)
+    params_mpomps = dict(cons_N=None, cons_S='U1', trunc_params=dict(chi_max=Dmpos), pbc=pbc2)
     mpos = MPOMPS(wv, wu, **params_mpomps)
     mpos.run()
     
