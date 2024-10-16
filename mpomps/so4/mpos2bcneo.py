@@ -1,5 +1,5 @@
 """
-The MPO-MPS method for SO(6) BBQ model
+The MPO-MPS method for SO(4) BBQ model
 
 Puiyuen 2024.09.29
     2024.09.04: finished MPOMPS with no symmetry used. The site for DMRG is no longer named SO6Site, but SU4HalfFillingSite.
@@ -223,6 +223,7 @@ class partonsite(Site):
             #the chinfo should be the same as the spin site
             chinfo = npc.ChargeInfo([1, 1], ['S','T'])
             leg = npc.LegCharge.from_qflat(chinfo, leglist2)
+            #leg = npc.LegCharge.from_qflat(chinfo, [[0,0],[-1,0],[1,0],[0,-1],[0,1],[1,0],[0,0],[0,0],[0,0],[0,0],[0,1],[0,0],[0,0],[0,0],[0,0],[0,0]])
         elif cons_N == None and cons_S == None:
             print("No symmetry used in site 'sixparton'. ")
             leg = npc.LegCharge.from_trivial(16)
@@ -500,7 +501,7 @@ def GutzwillerProjectionParton2Spin(partonpsi):
     middleleg = npc.LegCharge.from_trivial(4)
     
     if cons_N == None and cons_S == 'U1':
-        qtotal = [[0,0]]
+        qtotal = [0,0]
         middleleg = spinleg
     else:
         qtotal = None
@@ -525,8 +526,6 @@ def GutzwillerProjectionParton2Spin(partonpsi):
     L = partonpsi.L
     spinpsi = MPS.from_product_state([spinsite]*L, [0]*L)
     for i in range(L):
-        print(partonpsi._B[i].shape)
-        print(projector.shape)
         t1 = npc.tensordot(partonpsi._B[i], projector, axes=(['p'],['p*']))
         t1 = npc.tensordot(t1, unitary, axes=(['p'],['p*']))
         spinpsi.set_B(i, t1, form=None)
@@ -570,6 +569,8 @@ if __name__ == "__main__":
     K = args.K
     sweeps = args.sweeps
     verbose = args.verbose
+    conn = None
+    cons = 'U1'
 
     if pbc == 2:
         print("Generating two ground states by APBC and PBC at a time. ")
@@ -594,7 +595,7 @@ if __name__ == "__main__":
     wv, wu = Wannier_Z2(vmat.T, umat.T)
 
     print("----------MPO-MPS method: MLWO----------")
-    params_mpomps = dict(cons_N=None, cons_S='U1', trunc_params=dict(chi_max=Dmpos), pbc=pbc1)
+    params_mpomps = dict(cons_N=conn, cons_S=cons, trunc_params=dict(chi_max=Dmpos), pbc=pbc1)
     mpos = MPOMPS(wv, wu, **params_mpomps)
     mpos.run()
     
@@ -615,7 +616,7 @@ if __name__ == "__main__":
     wv, wu = Wannier_Z2(vmat.T, umat.T)
 
     print("----------MPO-MPS method: MLWO----------")
-    params_mpomps = dict(cons_N=None, cons_S='U1', trunc_params=dict(chi_max=Dmpos), pbc=pbc2)
+    params_mpomps = dict(cons_N=conn, cons_S=cons, trunc_params=dict(chi_max=Dmpos), pbc=pbc2)
     mpos = MPOMPS(wv, wu, **params_mpomps)
     mpos.run()
     
@@ -624,23 +625,23 @@ if __name__ == "__main__":
     gppsimlwo_pbc = GutzwillerProjectionParton2Spin(psimlwo_pbc)
     print("Gutzwiller projected MLWO MPO-MPS result is", gppsimlwo_pbc)
     
-    '''
+    
     print(" ")
     print("----------SO(4) Spin1 model DMRG---------")
-    params_dmrg = dict(cons_N=None, cons_S=None, Lx = lx, pbc=pbc1, J=J, K=K, D=Ddmrg, sweeps=sweeps, verbose=verbose)
-    so6dmrgmodel = BBQJKSO4(params_dmrg)
-    psidmrg, Edmrg = so6dmrgmodel.run_dmrg()
-    psidmrg2, Edmrg2 = so6dmrgmodel.run_dmrg_orthogonal([psidmrg])
+    params_dmrg = dict(cons_N=conn, cons_S=cons, Lx = lx, pbc=pbc1, J=J, K=K, D=Ddmrg, sweeps=sweeps, verbose=verbose)
+    so4dmrgmodel = BBQJKSO4(params_dmrg)
+    psidmrg, Edmrg = so4dmrgmodel.run_dmrg()
+    psidmrg2, Edmrg2 = so4dmrgmodel.run_dmrg_orthogonal([psidmrg])
     print("SO(6) DMRG results")
     print("psi1 after DMRG is", psidmrg)
     print("psi2 after DMRG is", psidmrg2)
     
     print(" ")
     print("----------sandwiches----------")
-    bbqmpo = so6dmrgmodel.calc_H_MPO()
+    bbqmpo = so4dmrgmodel.calc_H_MPO()
     #print("the overlap of psidmrg and psidmrg2", psidmrg.overlap(psidmrg2))
     print(" ")
-    print("the sandwich of projected psimlwo_apbc and SO(6) MPO is", bbqmpo.expectation_value(gppsimlwo_apbc))
+    print("the sandwich of projected psimlwo_apbc and SO(4) MPO is", bbqmpo.expectation_value(gppsimlwo_apbc))
 
     print("the overlap of psidmrg and gppsimlwo_apbc", psidmrg.overlap(gppsimlwo_apbc))
 
@@ -648,7 +649,7 @@ if __name__ == "__main__":
 
     print("check overlap", psidmrg.overlap(gppsimlwo_apbc)**2, "+", psidmrg2.overlap(gppsimlwo_apbc)**2, "=", psidmrg.overlap(gppsimlwo_apbc)**2+psidmrg2.overlap(gppsimlwo_apbc)**2)
     print(" ")
-    print("the sandwich of projected psimlwo and SO(6) MPO is", bbqmpo.expectation_value(gppsimlwo_pbc))
+    print("the sandwich of projected psimlwo_pbc and SO(4) MPO is", bbqmpo.expectation_value(gppsimlwo_pbc))
 
     print("the overlap of psidmrg and gppsimlwo_pbc", psidmrg.overlap(gppsimlwo_pbc))
 
@@ -659,7 +660,7 @@ if __name__ == "__main__":
     
     #print("check overlap of projected apbc and pbc", gppsimlwo_apbc.overlap(gppsimlwo_pbc))
     #print("check overlap of unprojected apbc and pbc", psimlwo_apbc.overlap(psimlwo_pbc))
-    '''
+    
     
     dimercheck = 1
     if dimercheck == 1:

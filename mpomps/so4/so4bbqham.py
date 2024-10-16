@@ -296,7 +296,7 @@ class BBQJKSO4(CouplingModel):
         self.D = model_params.get('D', 200)
         self.sweeps = model_params.get('sweeps', 10)
         
-        self.so4_generators, self.c_mn = get_so4_opr_list()
+        self.so4_generators, self.c_mn, self.d_mn = get_so4_opr_list_new()
 
         self.cons_N = model_params.get('cons_N', None)
         self.cons_S = model_params.get('cons_S', None)
@@ -323,12 +323,10 @@ class BBQJKSO4(CouplingModel):
                 print("periodic terms added")
             else:
                 break
-        
-            for a in range(6):
-                self.add_coupling_term(J, i0, i1, "L"+str(a), "L"+str(a))
-            
+
             for m in range(16):
                 for n in range(16):
+                    self.add_coupling_term(J*np.round(self.d_mn[m,n],6), i0, i1, "L"+str(m), "L"+str(n))
                     self.add_coupling_term(K*np.round(self.c_mn[m,n],6), i0, i1, "L"+str(m), "L"+str(n))
     
     def run_dmrg(self, **kwargs):
