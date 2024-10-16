@@ -55,6 +55,7 @@ for a in range(6):
             coe_list.append(pcoe)
 
 print(len(Loprs))
+print(Loprs)
 
 print(len(coe_list))
 print(coe_list[0])
@@ -64,11 +65,3 @@ for m in range(len(Loprs)):
     Loprs_new.append(U @ Loprs[m] @ np.conjugate(U).T)
     print("the",m,"th new L operator")
     print(Loprs_new[m])
-
-eigvals, eigvecs = spLA.eigh(Loprs_new[0], Loprs_new[5])
-print(eigvecs)
-
-for m in range(len(Loprs)):
-    Loprs_new.append(U @ Loprs[m] @ np.conjugate(U).T)
-    print("the",m,"th newnew L operator")
-    print(np.conjugate(eigvecs).T @ Loprs_new[m] @ eigvecs)
