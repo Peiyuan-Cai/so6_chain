@@ -246,6 +246,8 @@ class BBQJK(CouplingModel):
         self.verbose = model_params.get('verbose', 2)
         self.D = model_params.get('D', 64)
         self.sweeps = model_params.get('sweeps', 6)
+        self.cons_N = model_params.get('cons_N', None)
+        self.cons_S = model_params.get('cons_S', None)
         
         #defined as self variables 240716
         self.so6_generators, self.c_mn = get_opr_list()
