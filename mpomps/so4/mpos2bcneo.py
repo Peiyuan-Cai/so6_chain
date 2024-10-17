@@ -5,6 +5,7 @@ Puiyuen 2024.09.29
     2024.09.04: finished MPOMPS with no symmetry used. The site for DMRG is no longer named SO6Site, but SU4HalfFillingSite.
     2024.09.05: start to check the PBC case, making two ground states at a time. 
     2024.10.15: add good quantum number in MPOMPS, align with the DMRG code
+    2024.10.16(archieved): wrong workflow for adding good quantum numbers in the MPOMPS method, not using the decoupled Kitaev chains.
 "I will make it better"
 """
 import matplotlib.pyplot as plt
