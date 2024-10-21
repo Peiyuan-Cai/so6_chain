@@ -245,7 +245,7 @@ class partonsite(Site):
         
         Args:
             cons_N (str, optional): good quantum number: the parton number. Defaults to None. Optional to be 'N', 'Z2'
-            cons_S (str, optional): good quantum number: the parton flavor. Defaults to None. Optional to be 'flavor'
+            cons_S (str, optional): good quantum number: the parton flavor. Defaults to None. Optional to be 'U1'
 
         Notes:
             There are two different types of cons_N, 'N' for the parton filling number, and 'Z2' for a fake quantum number which is useful after projection. 
