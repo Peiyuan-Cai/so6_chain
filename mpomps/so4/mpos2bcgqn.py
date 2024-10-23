@@ -48,10 +48,10 @@ class SpinDoubleChain():
         """
         L = self.L
         t = -self.chi
-        d = -1j*self.delta
+        d = self.delta
         mu = self.lamb
-        self.tmat = np.zeros((L,L), dtype=complex)
-        self.dmat = np.zeros((L,L), dtype=complex)
+        self.tmat = np.zeros((L,L), dtype=float)
+        self.dmat = np.zeros((L,L), dtype=float)
         for i in range(L):
             self.tmat[i, i] = mu/2 
         for i in range(L-1):
@@ -78,12 +78,13 @@ class SpinDoubleChain():
         self.ham = np.block([[self.bigtmat, self.bigdmat],[-self.bigdmat.conj(), -self.bigtmat.conj()]])
         
         self.eig_eng, self.eig_vec = bdgeig(self.ham)
-        print("the eig energies", self.eig_eng)
+        print("the eig energies", np.real(self.eig_eng))
         self.V, self.U = m2vu(self.eig_vec)
+        self.V11, self.V22 = v_to_v1v2(self.V)
+        self.U12, self.U21 = u_to_u1u2(self.U)
         self.M = vu2m(self.V, self.U)
-'''
----------------------------6 parton site designed function begin---------------------------
-'''
+        
+#parton site functions
 #a funtion to calculate the values in the sixparton flavor quantum number
 def flavor_qn(combination):
     qn_map = {'w': [-1,0], 'x': [0,-1], 'y': [0,1], 'z': [1,0]} #the tenpy dosen't support the half integer quantum number, so we use the integer to represent the half integer.
@@ -149,16 +150,12 @@ def fmatrix(flavor, basis):
     fmat = np.diag(flist)
     return fmat
 
-'''
----------------------------6 parton site designed function end-----------------------------
-'''
-
 class partonsite(Site):
     def __init__(self, cons_N=None, cons_S=None):
         """
-        The 6 in 1 parton site for MPO-MPS method, meaning that we are doing 6 decoupled Kitaev chain, filling 1 parton each site. 
+        The 4 in 1 parton site for MPO-MPS method, meaning that we are doing 2 pairs of 2-coupled chain, filling 1 parton each site. 
     
-        Local physical leg dimension = 64 = 2**6. Parton flavors are u,v,w,x,y,z for the hatted 1 to 6, the SO(6) basis. 
+        Local physical leg dimension = 16 = 2**4. Parton flavors are w,x,y,z for the hatted 1 to 4, but it is in the SO(4) standard basis not the real parton flavor. We are going to use the U(1)xU(1) symmetry directly. 
         
         Args:
             cons_N (str, optional): good quantum number: the parton number. Defaults to None. Optional to be 'N', 'Z2'
@@ -198,10 +195,8 @@ class partonsite(Site):
         elif cons_N == None and cons_S == 'U1':
             #chinfo = npc.ChargeInfo([1], ['U1'])
             #leg = npc.LegCharge.from_qflat(chinfo, leglist2)
-            #the chinfo should be the same as the spin site
             chinfo = npc.ChargeInfo([1, 1], ['S','T'])
             leg = npc.LegCharge.from_qflat(chinfo, leglist2)
-            #leg = npc.LegCharge.from_qflat(chinfo, [[0,0],[-1,0],[1,0],[0,-1],[0,1],[1,0],[0,0],[0,0],[0,0],[0,0],[0,1],[0,0],[0,0],[0,0],[0,0],[0,0]])
         elif cons_N == None and cons_S == None:
             print("No symmetry used in site 'sixparton'. ")
             leg = npc.LegCharge.from_trivial(16)
@@ -246,17 +241,21 @@ class MPOMPS():
         self.trunc_params = kwargs.get("trunc_params", dict(chi_max=64) )
         self.pbc = kwargs.get("pbc", -1)
         
+        #the V and U are the whole matrix, not the V11, V22, U12, U21
         assert v.ndim == 2
         self._V = v
         self._U = u
         assert self._U.shape == self._V.shape
         self.projection_type = kwargs.get("projection_type", "Gutz")
 
-        self.L = self.Llat = u.shape[0] #the length of real sites
+        self.L = self.Llat = u.shape[0]//2 #the length of real sites: the half of the length of the 2-coupled chain
+        
+        self.v11, self.v22 = v_to_v1v2(self._V)
+        self.u12, self.u21 = u_to_u1u2(self._U)
         
         self.site = partonsite(self.cons_N, self.cons_S)
         self.init_mps()
-    
+        
     def init_mps(self, init=None):
         L = self.L
         if init is None:
@@ -317,7 +316,7 @@ class MPOMPS():
         
         return mpo
     
-    def get_mpo_U1(self, v, u, qn):
+    def get_mpo_U1(self, v11, v22, u12, u21, qn):
         chinfo = self.site.leg.chinfo
         pleg = self.site.leg
 
@@ -345,50 +344,64 @@ class MPOMPS():
         
         qn_dict = {-3: ('w', 'z'), -1: ('x', 'y'), 1: ('y', 'x'), 3: ('z', 'w')}
         
-        t0 = npc.zeros(legs_first, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+        v11, v22, u12, u21 = np.real(v11), np.real(v22), np.real(u12), np.real(u21) #set the v and u to be real, they have to be real
+        
+        t0 = npc.zeros(legs_first, labels=['wL', 'wR', 'p', 'p*'], dtype=float)
         i = 0
         if qn in qn_dict:
             cr_op, an_op = qn_dict[qn]
             cr = op_dict[cr_op][0]
             an = op_dict[an_op][1]
-            t0[0, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
+            if qn == -3 or qn == -1:
+                t0[0, 0, :, :] = v11[i]*self.site.get_op(cr) + u21[i]*self.site.get_op(an)
+            elif qn == 1 or qn == 3:
+                t0[0, 0, :, :] = v22[i]*self.site.get_op(cr) + u12[i]*self.site.get_op(an)
         t0[0, 1, :, :] = self.site.get_op('JW')
         mpo.append(t0)
         
         for i in range(1,L-1):
-            ti = npc.zeros(legs_bulk, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+            ti = npc.zeros(legs_bulk, labels=['wL', 'wR', 'p', 'p*'], dtype=float)
             ti[0,0,:,:] = self.site.get_op('id16')
             if qn in qn_dict:
                 cr_op, an_op = qn_dict[qn]
                 cr = op_dict[cr_op][0]
                 an = op_dict[an_op][1]
-                ti[1, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
+                if qn == -3 or qn == -1:
+                    ti[1, 0, :, :] = v11[i]*self.site.get_op(cr) + u21[i]*self.site.get_op(an)
+                elif qn == 1 or qn == 3:
+                    ti[1, 0, :, :] = v22[i]*self.site.get_op(cr) + u12[i]*self.site.get_op(an)
             ti[1, 1, :, :] = self.site.get_op('JW')
             mpo.append(ti)
             
         i = L-1
-        tL = npc.zeros(legs_last, labels=['wL', 'wR', 'p', 'p*'], dtype=u.dtype)
+        tL = npc.zeros(legs_last, labels=['wL', 'wR', 'p', 'p*'], dtype=float)
         tL[0,0,:,:] = self.site.get_op('id16')
         if qn in qn_dict:
             cr_op, an_op = qn_dict[qn]
             cr = op_dict[cr_op][0]
             an = op_dict[an_op][1]
-            tL[1, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
+            if qn == -3 or qn == -1:
+                tL[1, 0, :, :] = v11[i]*self.site.get_op(cr) + u21[i]*self.site.get_op(an)
+            elif qn == 1 or qn == 3:
+                tL[1, 0, :, :] = v22[i]*self.site.get_op(cr) + u12[i]*self.site.get_op(an)
         mpo.append(tL)
         
         return mpo
     
     def mpomps_step_1time(self, m, flavor):
+        v11m = self.v11[:,m]
+        v22m = self.v22[:,m]
+        u12m = self.u12[:,m]
+        u21m = self.u21[:,m]
         vm = self._V[:,m]
         um = self._U[:,m]
         mps = self.psi
         if self.cons_N is None and self.cons_S is None:
             mpo = self.get_mpo_trivial(vm, um, flavor)
         elif self.cons_N==None and self.cons_S=='U1':
-            mpo = self.get_mpo_U1(vm, um, flavor)
+            mpo = self.get_mpo_U1(v11m, v22m, u12m, u21m, flavor) #bring all the v and u in
         else:
             raise "Symmetry set of N and S is not allowed. "
-        halflength = self.L//2
         for i in range(self.L):
             B = npc.tensordot(mps.get_B(i,'B'), mpo[i], axes=('p','p*'))
             B = B.combine_legs([['wL', 'vL'], ['wR', 'vR']], qconj=[+1, -1])
@@ -405,7 +418,7 @@ class MPOMPS():
             print("initialize the mpo-mps calculation mps")
             self.init_mps(init=init)
             self.n_omode = 0
-        nmode = self._U.shape[0]
+        nmode = self._U.shape[0] // 2 #the number of the modes = the real site length
         print("MPO-MPS application start")
         
         if self.cons_N == None and self.cons_S == None:
@@ -426,7 +439,7 @@ class MPOMPS():
                     self.chi_max = np.max(self.psi.chi)
                     print( "applied the {}-th {} mode, the fidelity is {}, the largest bond dimension is {}. ".format( self.n_omode, qn, self.fidelity, self.chi_max) )
                 self.n_omode += 1
-
+                
 '''
 ------------------------------------------------------Extra functions---------------------------------------------
 '''
@@ -457,7 +470,7 @@ def GutzwillerProjectionParton2Spin(partonpsi):
     """
     The GP function to project a parton mps onto a spin mps
 
-    sixparton site -> (SO6Site) -> SU4HalfFillingSite
+    parton site -> SpinSite
 
     Args:
         partonpsi (tenpy.MPS object): the parton MPS
@@ -485,23 +498,10 @@ def GutzwillerProjectionParton2Spin(partonpsi):
         qtotal = None
         
     projector = npc.zeros([middleleg, partonleg.conj()], qtotal=qtotal, labels=['p','p*'], dtype=partonpsi.dtype)
-    projector[0,1] = 1 #0th spin index <=> u parton
+    projector[0,1] = 1 #0th spin index <=> w parton
     projector[1,2] = 1
     projector[2,3] = 1
     projector[3,4] = 1
-
-    '''
-    #change the SO(4) site (n1,n2,n3,n4) to SU(2) \times SU(2) standard representation (uu,ud,du,dd) site
-    unitary = npc.zeros([spinleg, middleleg.conj()], qtotal=qtotal, labels=['p','p*'], dtype=complex)
-    efac = np.exp(1j*np.pi/4)
-    unitary[0,0] = efac; unitary[0,3] = -efac
-    unitary[1,0] = np.conjugate(efac); unitary[1,3] = np.conjugate(efac)
-    unitary[2,1] = -np.conjugate(efac); unitary[2,2] = np.conjugate(efac)
-    unitary[3,1] = efac; unitary[3,2] = efac
-    unitary *= np.sqrt(1/2)
-
-    unitary = unitary.conj().transpose()
-    '''
     
     L = partonpsi.L
     spinpsi = MPS.from_product_state([spinsite]*L, [0]*L)
@@ -554,14 +554,8 @@ if __name__ == "__main__":
 
     if pbc == 2:
         print("Generating two ground states by APBC and PBC at a time. ")
-        Econst = (5/3) * K * lx
         pbc1 = -1
         pbc2 = 1
-    
-    if pbc == 1 or pbc==-1:
-        Econst = (5/3) * K * lx
-    elif pbc == 0:
-        Econst = (5/3) * K * (lx-1)
 
     print(" ")
     print("APBC case MPOMPS")
@@ -605,7 +599,7 @@ if __name__ == "__main__":
     gppsimlwo_pbc = GutzwillerProjectionParton2Spin(psimlwo_pbc)
     print("Gutzwiller projected MLWO MPO-MPS result is", gppsimlwo_pbc)
     
-    
+    '''
     print(" ")
     print("----------SO(4) Spin1 model DMRG---------")
     params_dmrg = dict(cons_N=conn, cons_S=cons, Lx = lx, pbc=pbc1, J=J, K=K, D=Ddmrg, sweeps=sweeps, verbose=verbose)
@@ -637,196 +631,4 @@ if __name__ == "__main__":
 
     print("check overlap", psidmrg.overlap(gppsimlwo_pbc)**2, "+", psidmrg2.overlap(gppsimlwo_pbc)**2, "=", psidmrg.overlap(gppsimlwo_pbc)**2+psidmrg2.overlap(gppsimlwo_pbc)**2)
     print(" ")
-    
-    #print("check overlap of projected apbc and pbc", gppsimlwo_apbc.overlap(gppsimlwo_pbc))
-    #print("check overlap of unprojected apbc and pbc", psimlwo_apbc.overlap(psimlwo_pbc))
-    
-    
-    dimercheck = 1
-    if dimercheck == 1:
-        print(" Dimercheck ")
-        def mps1_mpo_mps2(mps1, opr_string, mps2):
-            assert len(mps1._B) == len(opr_string) == len(mps2._B)
-            site = mps1.sites[0]
-            L = len(mps1._B)
-            temp = npc.tensordot(mps1._B[0].conj(), site.get_op(opr_string[0]), axes=('p*', 'p'))
-            left = npc.tensordot(temp, mps2._B[0], axes=('p*', 'p'))
-            for _ in range(1, L):
-                temp = npc.tensordot(mps1._B[_].conj(), site.get_op(opr_string[_]), axes=('p*', 'p'))
-                left = npc.tensordot(left, temp, axes=(['vR*'],["vL*"]))
-                left = npc.tensordot(left, mps2._B[_], axes=(['vR','p*'],['vL','p']))
-            value = left.to_ndarray()
-            return value.reshape(-1)[0]*mps1.norm*mps2.norm
-        
-        def trnslop_mpo(site, L=2, **kwargs):
-            """
-            get the MPO of translational operator with given site and length
-
-            output:
-                1. list of npc.Arrays
-            """
-            bc = kwargs.get('bc', 'pbc')    
-            assert L>1
-            leg = site.leg
-            chinfo = leg.chinfo
-            zero_div = [0]*chinfo.qnumber
-            from tenpy.linalg.charges import LegPipe, LegCharge
-            cleg = LegPipe([leg, leg.conj()], sort=False, bunch=False).to_LegCharge()
-            nleg = npc.LegCharge.from_qflat(chinfo, [zero_div])
-            
-            swap = npc.zeros([leg, leg.conj(), leg, leg.conj()], qtotal=zero_div, labels=['p1', 'p1*', 'p2', 'p2*']) 
-            for _i in range( site.dim ):
-                for _j in range( site.dim ):
-                    swap[_j,_i,_i,_j] = 1
-                    
-            reshaper = npc.zeros([leg, leg.conj(), cleg.conj()], qtotal=zero_div, labels=['p', 'p*', '(p*.p)'] )
-            for _i in range( site.dim ):
-                for _j in range( site.dim ):          
-                    idx = _i* site.dim + _j 
-                    reshaper[_i,_j,idx] = 1
-                        
-            swap = npc.tensordot(reshaper.conj(), swap, axes=((0,1),(0,1)))
-            swap.ireplace_labels(['(p.p*)'], ['p1.p1*'])
-            swap = npc.tensordot(swap, reshaper.conj(), axes=((1,2),(0,1)))
-            swap.ireplace_labels(['(p.p*)'], ['p2.p2*'])
-            
-            left, right = npc.qr(swap)
-                
-            left  = npc.tensordot(reshaper, left, axes=((2), (0)))
-            left.ireplace_labels([None], ['wR'])
-            
-            right = npc.tensordot(right, reshaper, axes=((1), (2)))
-            right.ireplace_labels([None], ['wL'])
-            
-            bulk = npc.tensordot(right, left, axes=('p*','p'))
-
-            if bc == 'pbc':
-                bt = npc.zeros([nleg, leg, leg.conj()], qtotal=zero_div, labels=['wL', 'p', 'p*',])
-                for _i in range( site.dim ):
-                    bt[0,_i,_i] = 1
-                left = npc.tensordot(bt, left, axes=(('p*', 'p')))
-            
-                bt = npc.zeros([leg, leg.conj(), nleg.conj()], qtotal=zero_div, labels=['p', 'p*', 'wR'])
-                for _i in range( site.dim ):
-                    bt[_i,_i,0] = 1
-                right = npc.tensordot(right, bt, axes=(('p*', 'p')))  
-
-            return [left] +  [bulk]*(L-2) +  [right] 
-        
-        def trnslop_mpo_fermion(site, L=2, **kwargs):
-            bc = kwargs.get('bc', 'pbc')    
-            assert L>1
-            leg = site.leg
-            chinfo = leg.chinfo
-            zero_div = [0]*chinfo.qnumber
-            from tenpy.linalg.charges import LegPipe, LegCharge
-            cleg = LegPipe([leg, leg.conj()], sort=False, bunch=False).to_LegCharge()
-            nleg = npc.LegCharge.from_qflat(chinfo, [zero_div])
-            
-            swap = npc.zeros([leg, leg.conj(), leg, leg.conj()], qtotal=zero_div, labels=['p1', 'p1*', 'p2', 'p2*']) 
-            for _i in range( site.dim ):
-                for _j in range( site.dim ):
-                    print(_i, _j)
-                    if _i == 1 and _j == 1:
-                        swap[_j,_i,_i,_j] = -1
-                    else:
-                        swap[_j,_i,_i,_j] = 1
-                    
-            reshaper = npc.zeros([leg, leg.conj(), cleg.conj()], qtotal=zero_div, labels=['p', 'p*', '(p*.p)'] )
-            for _i in range( site.dim ):
-                for _j in range( site.dim ):
-                    idx = _i* site.dim + _j 
-                    reshaper[_i,_j,idx] = 1
-                        
-            swap = npc.tensordot(reshaper.conj(), swap, axes=((0,1),(0,1)))
-            swap.ireplace_labels(['(p.p*)'], ['p1.p1*'])
-            swap = npc.tensordot(swap, reshaper.conj(), axes=((1,2),(0,1)))
-            swap.ireplace_labels(['(p.p*)'], ['p2.p2*'])
-            
-            left, right = npc.qr(swap)
-                
-            left  = npc.tensordot(reshaper, left, axes=((2), (0)))
-            left.ireplace_labels([None], ['wR'])
-            
-            right = npc.tensordot(right, reshaper, axes=((1), (2)))
-            right.ireplace_labels([None], ['wL'])
-            
-            bulk = npc.tensordot(right, left, axes=('p*','p'))
-
-            if bc == 'pbc':
-                bt = npc.zeros([nleg, leg, leg.conj()], qtotal=zero_div, labels=['wL', 'p', 'p*',])
-                for _i in range( site.dim ):
-                    bt[0,_i,_i] = 1
-                left = npc.tensordot(bt, left, axes=(('p*', 'p')))
-            
-                bt = npc.zeros([leg, leg.conj(), nleg.conj()], qtotal=zero_div, labels=['p', 'p*', 'wR'])
-                for _i in range( site.dim ):
-                    bt[_i,_i,0] = 1
-                right = npc.tensordot(right, bt, axes=(('p*', 'p')))  
-
-            return [left] +  [bulk]*(L-2) +  [right] 
-
-        def apply_mpo(mpo, mps, i0=0):
-            """
-            Inputs:
-                1. mpo, list of npc.Array
-                2. mps, tenpy.MPS object
-                3. i0, int, the mpo starts from i0-th site
-            Output:
-                1. mps, tenpy.MPS object
-            
-            It's a ! type function, changing the input mps at the same time
-            """
-            L = len(mpo)
-            for i in range( i0, i0+L ):
-                B = npc.tensordot(mps.get_B(i, 'B'), mpo[i-i0], axes=('p', 'p*'))
-                B = B.combine_legs([['wL', 'vL'], ['wR', 'vR']], qconj=[+1, -1])
-                B.ireplace_labels(['(wL.vL)', '(wR.vR)'], ['vL', 'vR'])
-                B.legs[B.get_leg_index('vL')] = B.get_leg('vL').to_LegCharge()
-                B.legs[B.get_leg_index('vR')] = B.get_leg('vR').to_LegCharge()
-                mps._B[i] = B#.itranspose(('vL', 'p', 'vR'))
-            return mps
-        
-        '''
-        tpsi1 = deepcopy(gppsimlwo_apbc)
-        tpsi1 = apply_mpo(transop, tpsi1)
-        tpsi1.canonical_form()
-        print(tpsi1.chi)
-        print("<projected_pbc|T|projected_apbc> is", psimlwo_pbc.overlap(psimlwo_apbc))
-        '''
-        
-        site = gppsimlwo_apbc.sites[0]
-        transop = trnslop_mpo(site, lx)
-        tpsi1 = deepcopy(gppsimlwo_apbc)
-        tpsi1 = apply_mpo(transop, tpsi1)
-        tpsi1.canonical_form()
-        print("<projected_pbc|T|projected_apbc> is", gppsimlwo_pbc.overlap(tpsi1))
-
-        tpsi1 = deepcopy(gppsimlwo_pbc)
-        tpsi1 = apply_mpo(transop, tpsi1)
-        tpsi1.canonical_form()
-        print("<projected_pbc|T|projected_pbc> is", gppsimlwo_pbc.overlap(tpsi1))
-
-        tpsi1 = deepcopy(gppsimlwo_apbc)
-        tpsi1 = apply_mpo(transop, tpsi1)
-        tpsi1.canonical_form()
-        print("<projected_apbc|T|projected_apbc> is", gppsimlwo_apbc.overlap(tpsi1))
-
-        '''
-        site = psimlwo_apbc.sites[0]
-        transop = trnslop_mpo_fermion(site, lx)
-        tpsi1 = deepcopy(psimlwo_apbc)
-        tpsi1 = apply_mpo(transop, tpsi1)
-        tpsi1.canonical_form()
-        print("<unprojected_pbc|T|unprojected_apbc> is", psimlwo_pbc.overlap(tpsi1))
-
-        tpsi1 = deepcopy(psimlwo_pbc)
-        tpsi1 = apply_mpo(transop, tpsi1)
-        tpsi1.canonical_form()
-        print("<unprojected_pbc|T|unprojected_pbc> is", psimlwo_pbc.overlap(tpsi1))
-
-        tpsi1 = deepcopy(psimlwo_apbc)
-        tpsi1 = apply_mpo(transop, tpsi1)
-        tpsi1.canonical_form()
-        print("<unprojected_apbc|T|unprojected_apbc> is", psimlwo_apbc.overlap(tpsi1))
-        '''
+    '''
