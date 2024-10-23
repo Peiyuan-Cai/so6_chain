@@ -27,6 +27,20 @@ def m2vu(m, order = None):
         order = [i for i in range(na)]
     return m[:na, order].copy(), m[na:, order].copy()
 
+def v_to_v1v2(v):
+    v11 = np.zeros((v.shape[0]//2, v.shape[1]//2), dtype=v.dtype)
+    v22 = np.zeros((v.shape[0]//2, v.shape[1]//2), dtype=v.dtype)
+    v11 = v[:v.shape[0]//2, :v.shape[1]//2]
+    v22 = v[v.shape[0]//2:, v.shape[1]//2:]
+    return v11, v22
+
+def u_to_u1u2(u):
+    u12 = np.zeros((u.shape[0]//2, u.shape[1]//2), dtype=u.dtype)
+    u21 = np.zeros((u.shape[0]//2, u.shape[1]//2), dtype=u.dtype)
+    u12 = u[:u.shape[0]//2, u.shape[1]//2:]
+    u21 = u[u.shape[0]//2:, :u.shape[1]//2]
+    return u12, u21
+
 def majoranabasis(n):
     #return  1/2(M) \otimes I_N
     i = np.eye(n) / np.sqrt(2)
