@@ -578,7 +578,7 @@ if __name__ == "__main__":
     wv, wu = Wannier_Z2(vmat.T, umat.T)
 
     print("----------MPO-MPS method: MLWO----------")
-    params_mpomps = dict(cons_N=None, cons_S='U1', trunc_params=dict(chi_max=Dmpos), pbc=pbc1)
+    params_mpomps = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=Dmpos), pbc=pbc1)
     mpos = MPOMPS(wv, wu, **params_mpomps)
     mpos.run()
     
@@ -599,7 +599,7 @@ if __name__ == "__main__":
     wv, wu = Wannier_Z2(vmat.T, umat.T)
 
     print("----------MPO-MPS method: MLWO----------")
-    params_mpomps = dict(cons_N=None, cons_S='U1', trunc_params=dict(chi_max=Dmpos), pbc=pbc2)
+    params_mpomps = dict(cons_N=None, cons_S=None, trunc_params=dict(chi_max=Dmpos), pbc=pbc2)
     mpos = MPOMPS(wv, wu, **params_mpomps)
     mpos.run()
     
@@ -608,7 +608,7 @@ if __name__ == "__main__":
     gppsimlwo_pbc = GutzwillerProjectionParton2Spin(psimlwo_pbc)
     print("Gutzwiller projected MLWO MPO-MPS result is", gppsimlwo_pbc)
     
-    '''
+    
     print(" ")
     print("----------SO(4) Spin1 model DMRG---------")
     params_dmrg = dict(cons_N=None, cons_S=None, Lx = lx, pbc=pbc1, J=J, K=K, D=Ddmrg, sweeps=sweeps, verbose=verbose)
@@ -643,7 +643,7 @@ if __name__ == "__main__":
     
     #print("check overlap of projected apbc and pbc", gppsimlwo_apbc.overlap(gppsimlwo_pbc))
     #print("check overlap of unprojected apbc and pbc", psimlwo_apbc.overlap(psimlwo_pbc))
-    '''
+    
     
     dimercheck = 1
     if dimercheck == 1:

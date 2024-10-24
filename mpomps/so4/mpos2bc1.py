@@ -513,7 +513,6 @@ def GutzwillerProjectionParton2Spin(partonpsi):
     projector[2,3] = 1
     projector[3,4] = 1
 
-    '''
     #change the SO(4) site (n1,n2,n3,n4) to SU(2) \times SU(2) standard representation (uu,ud,du,dd) site
     unitary = npc.zeros([spinleg, middleleg.conj()], qtotal=qtotal, labels=['p','p*'], dtype=complex)
     efac = np.exp(1j*np.pi/4)
@@ -524,13 +523,12 @@ def GutzwillerProjectionParton2Spin(partonpsi):
     unitary *= np.sqrt(1/2)
 
     unitary = unitary.conj().transpose()
-    '''
     
     L = partonpsi.L
     spinpsi = MPS.from_product_state([spinsite]*L, [0]*L)
     for i in range(L):
         t1 = npc.tensordot(partonpsi._B[i], projector, axes=(['p'],['p*']))
-        #t1 = npc.tensordot(t1, unitary, axes=(['p'],['p*']))
+        t1 = npc.tensordot(t1, unitary, axes=(['p'],['p*']))
         spinpsi.set_B(i, t1, form=None)
     spinpsi.canonical_form()
     
@@ -573,7 +571,7 @@ if __name__ == "__main__":
     sweeps = args.sweeps
     verbose = args.verbose
     conn = None
-    cons = 'U1'
+    cons = None
 
     if pbc == 2:
         print("Generating two ground states by APBC and PBC at a time. ")
