@@ -73,26 +73,36 @@ class SpinDoubleChain():
         self.dmat -= self.dmat.T
 
         self.bigtmat = np.block([[self.tmat, np.zeros((L,L))],[np.zeros((L,L)), self.tmat]])
-        self.bigdmat = np.block([[np.zeros((L,L)), self.dmat],[self.dmat, np.zeros((L,L))]])
+        self.bigdmat = np.block([[np.zeros((L,L)), -self.dmat],[self.dmat, np.zeros((L,L))]])
         
         self.ham = np.block([[self.bigtmat, self.bigdmat],[-self.bigdmat.conj(), -self.bigtmat.conj()]])
         
         self.eig_eng, self.eig_vec = bdgeig(self.ham)
         print("the eig energies", np.real(self.eig_eng))
-        self.V, self.U = m2vu(self.eig_vec)
-        self.V11, self.V22 = v_to_v1v2(self.V)
-        self.U12, self.U21 = u_to_u1u2(self.U)
-        self.M = vu2m(self.V, self.U)
         
-        self.smallham = np.block([[self.tmat, self.dmat], [self.dmat.conj().T, -self.tmat.conj()]])
-        eig_eng, eig_vec = bdgeig(self.smallham)
-        self.smallM = eig_vec
-        self.V, self.U = m2vu(self.smallM)
+        self.H14 = np.block([[self.tmat, -self.dmat], [-self.dmat.conj().T, -self.tmat.conj()]])
+        self.H23 = np.block([[self.tmat, self.dmat], [self.dmat.conj().T, -self.tmat.conj()]])
+        eig_eng14, eig_vec14 = bdgeig(self.H14)
+        self.smallM14 = eig_vec14
+        eig_eng23, eig_vec23 = bdgeig(self.H23)
+        self.smallM23 = eig_vec23
         
+        self.V14, self.U14 = m2vu(self.smallM14)
+        self.V23, self.U23 = m2vu(self.smallM23)
+        
+        zeromat = np.zeros((L,L))
+        
+        self.bigM = np.block([[self.V14, zeromat, zeromat, self.U14.conj()],
+                       [zeromat, self.V23, self.U23.conj(), zeromat],
+                       [zeromat, self.U23, self.V23.conj(), zeromat],
+                       [self.U14, zeromat, zeromat, self.V14.conj()]])
+        
+        self.V, self.U = m2vu(self.bigM)
+        #print("the diagonalized energies", np.diagonal(self.bigM.conj().T @ self.ham @ self.bigM))
 #parton site functions
 #a funtion to calculate the values in the sixparton flavor quantum number
 def flavor_qn(combination):
-    qn_map = {'w': [-1,0], 'x': [0,-1], 'y': [0,1], 'z': [1,0]} #the tenpy dosen't support the half integer quantum number, so we use the integer to represent the half integer.
+    qn_map = {'w': [-1,0], 'x': [0,-1], 'y': [0,1], 'z': [1,0]}
     totalqn = [0,0]
     for char in combination:
         for i in range(len(totalqn)):
@@ -114,7 +124,7 @@ def adaggermatrix(flavor, basis):
     Notes:
         It's ugly, but it works well. 
     """
-    basislength = len(basis) #for SO(6) case, it's 64
+    basislength = len(basis) #for SO(4), it's 16
     adaggermatrixform = np.zeros((basislength,basislength))
     for l in range(basislength):
         if basis[l] == 'empty':
@@ -253,7 +263,9 @@ class MPOMPS():
         assert self._U.shape == self._V.shape
         self.projection_type = kwargs.get("projection_type", "Gutz")
 
-        self.L = self.Llat = u.shape[0] #the length of real sites: the half of the length of the 2-coupled chain
+        self.L = self.Llat = u.shape[0]
+        if self.cons_S == 'U1':
+            self.L = self.Llat = u.shape[0] // 2 #the length of real sites: the half of the length of the 2-coupled chain
         
         self.v11, self.v22 = v_to_v1v2(self._V)
         self.u12, self.u21 = u_to_u1u2(self._U)
@@ -325,13 +337,13 @@ class MPOMPS():
         chinfo = self.site.leg.chinfo
         pleg = self.site.leg
 
-        if qn == -3:
+        if qn == 3:
             fqn = [-1, 0] #cwdag + cz
-        elif qn == -1:
-            fqn = [0, -1] #cxdag + cy
         elif qn == 1:
+            fqn = [0, -1] #cxdag + cy
+        elif qn == -1:
             fqn = [0, 1] #cydag + cx
-        elif qn == 3:
+        elif qn == -3:
             fqn = [1, 0] #czdag + cw
 
         firstleg = npc.LegCharge.from_qflat(chinfo, [[0,0]], 1)
@@ -347,9 +359,7 @@ class MPOMPS():
         
         op_dict = {'w': ('cwdag', 'cw'), 'x': ('cxdag', 'cx'), 'y': ('cydag', 'cy'), 'z': ('czdag', 'cz')}
         
-        qn_dict = {-3: ('w', 'z'), -1: ('x', 'y'), 1: ('y', 'x'), 3: ('z', 'w')}
-        
-        v11, v22, u12, u21 = np.real(v11), np.real(v22), np.real(u12), np.real(u21) #set the v and u to be real, they have to be real
+        qn_dict = {3: ('w', 'z'), 1: ('x', 'y'), -1: ('y', 'x'), -3: ('z', 'w')}
         
         t0 = npc.zeros(legs_first, labels=['wL', 'wR', 'p', 'p*'], dtype=float)
         i = 0
@@ -357,9 +367,9 @@ class MPOMPS():
             cr_op, an_op = qn_dict[qn]
             cr = op_dict[cr_op][0]
             an = op_dict[an_op][1]
-            if qn == -3 or qn == -1:
+            if qn == 3 or qn == -3:
                 t0[0, 0, :, :] = v11[i]*self.site.get_op(cr) + u21[i]*self.site.get_op(an)
-            elif qn == 1 or qn == 3:
+            elif qn == 1 or qn == -1:
                 t0[0, 0, :, :] = v22[i]*self.site.get_op(cr) + u12[i]*self.site.get_op(an)
         t0[0, 1, :, :] = self.site.get_op('JW')
         mpo.append(t0)
@@ -371,9 +381,9 @@ class MPOMPS():
                 cr_op, an_op = qn_dict[qn]
                 cr = op_dict[cr_op][0]
                 an = op_dict[an_op][1]
-                if qn == -3 or qn == -1:
+                if qn == 3 or qn == -3:
                     ti[1, 0, :, :] = v11[i]*self.site.get_op(cr) + u21[i]*self.site.get_op(an)
-                elif qn == 1 or qn == 3:
+                elif qn == 1 or qn == -1:
                     ti[1, 0, :, :] = v22[i]*self.site.get_op(cr) + u12[i]*self.site.get_op(an)
             ti[1, 1, :, :] = self.site.get_op('JW')
             mpo.append(ti)
@@ -385,88 +395,24 @@ class MPOMPS():
             cr_op, an_op = qn_dict[qn]
             cr = op_dict[cr_op][0]
             an = op_dict[an_op][1]
-            if qn == -3 or qn == -1:
+            if qn == 3 or qn == -3:
                 tL[1, 0, :, :] = v11[i]*self.site.get_op(cr) + u21[i]*self.site.get_op(an)
-            elif qn == 1 or qn == 3:
+            elif qn == 1 or qn == -1:
                 tL[1, 0, :, :] = v22[i]*self.site.get_op(cr) + u12[i]*self.site.get_op(an)
         mpo.append(tL)
         
         return mpo
     
-    def get_mpo_U1_small(self, v, u, qn):
-        chinfo = self.site.leg.chinfo
-        pleg = self.site.leg
-
-        if qn == -3:
-            fqn = [-1, 0] #cwdag + cz
-        elif qn == -1:
-            fqn = [0, -1] #cxdag + cy
-        elif qn == 1:
-            fqn = [0, 1] #cydag + cx
-        elif qn == 3:
-            fqn = [1, 0] #czdag + cw
-
-        firstleg = npc.LegCharge.from_qflat(chinfo, [[0,0]], 1)
-        lastleg = npc.LegCharge.from_qflat(chinfo, [fqn], -1)
-        bulkleg = npc.LegCharge.from_qflat(chinfo, [fqn, [0,0]], 1)
-        #legs arrange in order 'wL', 'wR', 'p', 'p*'
-        legs_first = [firstleg, bulkleg.conj(), pleg, pleg.conj()]
-        legs_bulk = [bulkleg, bulkleg.conj(), pleg, pleg.conj()]
-        legs_last = [bulkleg, lastleg, pleg, pleg.conj()]
-        
-        mpo = []
-        L = self.L
-        
-        op_dict = {'w': ('cwdag', 'cw'), 'x': ('cxdag', 'cx'), 'y': ('cydag', 'cy'), 'z': ('czdag', 'cz')}
-        
-        qn_dict = {-3: ('w', 'z'), -1: ('x', 'y'), 1: ('y', 'x'), 3: ('z', 'w')}
-        
-        t0 = npc.zeros(legs_first, labels=['wL', 'wR', 'p', 'p*'], dtype=float)
-        i = 0
-        if qn in qn_dict:
-            cr_op, an_op = qn_dict[qn]
-            cr = op_dict[cr_op][0]
-            an = op_dict[an_op][1]
-            t0[0, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
-        t0[0, 1, :, :] = self.site.get_op('JW')
-        mpo.append(t0)
-        
-        for i in range(1,L-1):
-            ti = npc.zeros(legs_bulk, labels=['wL', 'wR', 'p', 'p*'], dtype=float)
-            ti[0,0,:,:] = self.site.get_op('id16')
-            if qn in qn_dict:
-                cr_op, an_op = qn_dict[qn]
-                cr = op_dict[cr_op][0]
-                an = op_dict[an_op][1]
-                ti[1, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
-            ti[1, 1, :, :] = self.site.get_op('JW')
-            mpo.append(ti)
-            
-        i = L-1
-        tL = npc.zeros(legs_last, labels=['wL', 'wR', 'p', 'p*'], dtype=float)
-        tL[0,0,:,:] = self.site.get_op('id16')
-        if qn in qn_dict:
-            cr_op, an_op = qn_dict[qn]
-            cr = op_dict[cr_op][0]
-            an = op_dict[an_op][1]
-            tL[1, 0, :, :] = v[i]*self.site.get_op(cr) + u[i]*self.site.get_op(an)
-        mpo.append(tL)
-        
-        return mpo
-    
     def mpomps_step_1time(self, m, flavor):
-        #v11m = self.v11[:,m]
-        #v22m = self.v22[:,m]
-        #u12m = self.u12[:,m]
-        #u21m = self.u21[:,m]
         vm = self._V[:,m]
         um = self._U[:,m]
+        v11, v22 = self.v11[:,m], self.v22[:,m]
+        u12, u21 = self.u12[:,m], self.u21[:,m]
         mps = self.psi
         if self.cons_N is None and self.cons_S is None:
             mpo = self.get_mpo_trivial(vm, um, flavor)
         elif self.cons_N==None and self.cons_S=='U1':
-            #mpo = self.get_mpo_U1(v11m, v22m, u12m, u21m, flavor) #bring all the v and u in
-            mpo = self.get_mpo_U1_small(vm, um, flavor)
+            mpo = self.get_mpo_U1(v11, v22, u12, u21, flavor)
         else:
             raise "Symmetry set of N and S is not allowed. "
         for i in range(self.L):
@@ -498,7 +444,8 @@ class MPOMPS():
                     print( "applied the {}-th {} mode, the fidelity is {}, the largest bond dimension is {}. ".format( self.n_omode, flavor, self.fidelity, self.chi_max) )
                 self.n_omode += 1
         elif self.cons_N == None and self.cons_S == 'U1':
-            qnlist = [-3, -1, 1, 3]
+            nmode = nmode // 2
+            qnlist = [3, 1, -1, -3]
             for m in range(nmode):
                 for qn in qnlist:
                     err, self.psi = self.mpomps_step_1time(m, qn)
@@ -666,6 +613,7 @@ if __name__ == "__main__":
     gppsimlwo_pbc = GutzwillerProjectionParton2Spin(psimlwo_pbc)
     print("Gutzwiller projected MLWO MPO-MPS result is", gppsimlwo_pbc)
     
+    '''
     print(" ")
     print("----------SO(4) Spin1 model DMRG---------")
     params_dmrg = dict(cons_N=conn, cons_S=cons, Lx = lx, pbc=pbc1, J=J, K=K, D=Ddmrg, sweeps=sweeps, verbose=verbose)
@@ -697,3 +645,4 @@ if __name__ == "__main__":
 
     print("check overlap", psidmrg.overlap(gppsimlwo_pbc)**2, "+", psidmrg2.overlap(gppsimlwo_pbc)**2, "=", psidmrg.overlap(gppsimlwo_pbc)**2+psidmrg2.overlap(gppsimlwo_pbc)**2)
     print(" ")
+    '''
