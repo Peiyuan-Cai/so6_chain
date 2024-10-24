@@ -4,7 +4,7 @@ The MPO-MPS method for SO(6) BBQ model
 Puiyuen 2024.09.29
     2024.09.04: finished MPOMPS with no symmetry used. The site for DMRG is no longer named SO6Site, but SU4HalfFillingSite.
     2024.09.05: start to check the PBC case, making two ground states at a time. 
-"I will make it better"
+    2024.10.24: Only work for cons_S = None
 """
 import matplotlib.pyplot as plt
 from tenpy.tools.params import asConfig
