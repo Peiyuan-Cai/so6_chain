@@ -19,8 +19,8 @@ import pickle
 import itertools
 import matplotlib.pyplot as plt
 import numpy as np
-from bdgpack import *
-from so6bbqham import *
+from clustercode.so6.bdgpack import *
+from clustercode.so6.so6bbqham import *
 from tenpy.algorithms import dmrg
 import logging
 logging.getLogger('parso.python.diff').disabled = True

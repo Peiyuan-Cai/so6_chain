@@ -1,6 +1,6 @@
 import numpy as np
 import pickle
-from so6bbqham import *
+from clustercode.so6.so6bbqham import *
 import matplotlib.pyplot as plt
 
 import numpy as np
