@@ -513,7 +513,7 @@ if __name__ == "__main__":
     mpos = MPOMPS(vmat, umat, **params_mpomps)
     mpos.run()
     
-    print("----------Gutzwiller projection to SO(6) site----------")
+    print("----------Gutzwiller projection to SO(4) site----------")
     psimlwo_apbc = mpos.psi
     gppsimlwo_apbc = GutzwillerProjectionParton2Spin(psimlwo_apbc)
     print("Gutzwiller projected MLWO MPO-MPS result is", gppsimlwo_apbc)
@@ -531,7 +531,7 @@ if __name__ == "__main__":
     mpos = MPOMPS(vmat, umat, **params_mpomps)
     mpos.run()
     
-    print("----------Gutzwiller projection to SO(6) site----------")
+    print("----------Gutzwiller projection to SO(4) site----------")
     psimlwo_pbc = mpos.psi
     gppsimlwo_pbc = GutzwillerProjectionParton2Spin(psimlwo_pbc)
     print("Gutzwiller projected MLWO MPO-MPS result is", gppsimlwo_pbc)
