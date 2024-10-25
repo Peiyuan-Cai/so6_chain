@@ -445,3 +445,6 @@ if __name__ == "__main__":
         eng1 = so4mpo.expectation_value(gs_dmrg)
         eng2 = so4mpo.expectation_value(psi_dmrg)
         print("Energy difference", np.abs(eng2-eng1))
+        
+        end_time = time.time()
+        print("runtime", end_time-start_time)
