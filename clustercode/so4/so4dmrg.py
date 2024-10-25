@@ -1,5 +1,5 @@
 """
-SO6 chain DMRG code compact version for HPC use. 
+SO6 chain DMRG code compact version for HPC use. Using U(1)xU(1) symmetry by default
 
 Puiyuen 2401003
 """
