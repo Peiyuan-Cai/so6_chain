@@ -100,7 +100,7 @@ class SpinDoubleChain():
         self.ham = np.block([[self.bigtmat, self.bigdmat],[-self.bigdmat.conj(), -self.bigtmat.conj()]])
         
         self.eig_eng, self.eig_vec = bdgeig(self.ham)
-        #print("the eig energies", np.real(self.eig_eng))
+        print("the eig energies", np.real(self.eig_eng))
         
         self.H14 = np.block([[self.tmat, -self.dmat], [-self.dmat.conj().T, -self.tmat.conj()]])
         self.H23 = np.block([[self.tmat, self.dmat], [self.dmat.conj().T, -self.tmat.conj()]])
@@ -280,6 +280,7 @@ class MPOMPS():
         self.cons_S = kwargs.get("cons_S", None)
         self.trunc_params = kwargs.get("trunc_params", dict(chi_max=64) )
         self.pbc = kwargs.get("pbc", -1)
+        self.init = kwargs.get("init", None)
         
         #the V and U are the whole matrix, not the V11, V22, U12, U21
         assert v.ndim == 2
@@ -296,7 +297,7 @@ class MPOMPS():
         self.u12, self.u21 = u_to_u1u2(self._U)
         
         self.site = partonsite(self.cons_N, self.cons_S)
-        self.init_mps()
+        self.init_mps(self.init)
         
     def init_mps(self, init=None):
         L = self.L
@@ -452,7 +453,6 @@ def GutzwillerProjectionParton2Spin(partonpsi):
     spinpsi = MPS.from_product_state([spinsite]*L, [0]*L)
     for i in range(L):
         t1 = npc.tensordot(partonpsi._B[i], projector, axes=(['p'],['p*']))
-        #t1 = npc.tensordot(t1, unitary, axes=(['p'],['p*']))
         spinpsi.set_B(i, t1, form=None)
     spinpsi.canonical_form()
     
@@ -506,7 +506,7 @@ if __name__ == "__main__":
     umat = doublechain.wU
 
     print("----------MPO-MPS method: MLWO----------")
-    params_mpomps = dict(cons_N=conn, cons_S=cons, trunc_params=dict(chi_max=Dmpos), pbc=pbc)
+    params_mpomps = dict(cons_N=conn, cons_S=cons, trunc_params=dict(chi_max=Dmpos), pbc=pbc, init=None)
     mpos = MPOMPS(vmat, umat, **params_mpomps)
     mpos.run()
     
@@ -529,5 +529,28 @@ if __name__ == "__main__":
     #print("the overlap of psidmrg and psidmrg2", psidmrg.overlap(psidmrg2))
     print(" ")
     print("the sandwich of projected psimlwo_obc and SO(4) MPO is", bbqmpo.expectation_value(gppsimlwo_obc))
-
+    print("the overlap of psidmrg and gppsimlwo_obc", psidmrg.overlap(gppsimlwo_obc))
+    
+    print(" ")
+    print(" ")
+    print("----------OBC counting----------")
+    init0 = [0]+[10]*(lx-1)
+    
+    print("----------MPO-MPS method: MLWO----------")
+    print("init = da|yz>")
+    params_mpomps = dict(cons_N=conn, cons_S=cons, trunc_params=dict(chi_max=Dmpos), pbc=pbc, init=init0)
+    mpos = MPOMPS(vmat, umat, **params_mpomps)
+    mpos.run()
+    
+    print("----------Gutzwiller projection to SO(4) site----------")
+    psimlwo_obc = mpos.psi
+    gppsimlwo_obc = GutzwillerProjectionParton2Spin(psimlwo_obc)
+    print("Gutzwiller projected MLWO MPO-MPS result is", gppsimlwo_obc)
+    print(" ")
+    
+    print("----------OBC sandwiches----------")
+    bbqmpo = so4dmrgmodel.calc_H_MPO()
+    #print("the overlap of psidmrg and psidmrg2", psidmrg.overlap(psidmrg2))
+    print(" ")
+    print("the sandwich of projected psimlwo_obc and SO(4) MPO is", bbqmpo.expectation_value(gppsimlwo_obc))
     print("the overlap of psidmrg and gppsimlwo_obc", psidmrg.overlap(gppsimlwo_obc))
