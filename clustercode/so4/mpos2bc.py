@@ -102,6 +102,7 @@ class SpinDoubleChain():
         self.eig_eng, self.eig_vec = bdgeig(self.ham)
         #print("the eig energies", np.real(self.eig_eng))
         
+        #20241030 the 1&4 and 2&3 are not the flavor indices, but the plus and minus parts, 14 for +, 23 for -
         self.H14 = np.block([[self.tmat, -self.dmat], [-self.dmat.conj().T, -self.tmat.conj()]])
         self.H23 = np.block([[self.tmat, self.dmat], [self.dmat.conj().T, -self.tmat.conj()]])
         eig_eng14, eig_vec14 = bdgeig(self.H14)

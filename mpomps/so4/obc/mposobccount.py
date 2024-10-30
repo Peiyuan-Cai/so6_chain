@@ -124,6 +124,11 @@ class SpinDoubleChain():
         
         self.wV = np.block([[self.wV14, zeromat],[zeromat, self.wV23]])
         self.wU = np.block([[zeromat, self.wU23],[self.wU14, zeromat]])
+        
+        self.wM = np.block([[self.wV, self.wU.conj()],
+                            [self.wU, self.wV.conj()]])
+        
+        print('eigen energies of the BdG Hamiltonian', np.diag(self.wM.conj().T @ self.ham @ self.wM))
     
 class partonsite(Site):
     def __init__(self, cons_N=None, cons_S=None):
@@ -306,7 +311,7 @@ class MPOMPS():
                 if self.cons_S == None:
                     init = [0] * L #all empty
                 elif self.cons_S == 'U1':
-                    init = [10] * L #particle-hole symmetry used
+                    init = [0] * L #particle-hole symmetry used
             if self.pbc == 1:
                 if self.cons_S == None:
                     init = [15] + [0]*(L-1) #a_{1,u}^\dagger a_{1,v}^\dagger ... a_{1,z}^\dagger \ket{0}_a
@@ -389,6 +394,77 @@ class MPOMPS():
         
         return mpo
     
+    def get_mpo_U1_an(self, v11, v22, u12, u21, qn):
+        #the annihilator version of the get_mpo_U1
+        chinfo = self.site.leg.chinfo
+        pleg = self.site.leg
+
+        if qn == 3:
+            fqn = [1, 0] #cw + czdag
+        elif qn == 1:
+            fqn = [0, 1] #cx + cydag
+        elif qn == -1:
+            fqn = [0, -1] #cy + cxdag
+        elif qn == -3:
+            fqn = [-1, 0] #cz + cwdag
+
+        firstleg = npc.LegCharge.from_qflat(chinfo, [[0,0]], 1)
+        lastleg = npc.LegCharge.from_qflat(chinfo, [fqn], -1)
+        bulkleg = npc.LegCharge.from_qflat(chinfo, [fqn, [0,0]], 1)
+        #legs arrange in order 'wL', 'wR', 'p', 'p*'
+        legs_first = [firstleg, bulkleg.conj(), pleg, pleg.conj()]
+        legs_bulk = [bulkleg, bulkleg.conj(), pleg, pleg.conj()]
+        legs_last = [bulkleg, lastleg, pleg, pleg.conj()]
+        
+        mpo = []
+        L = self.L
+        
+        op_dict = {'w': ('cwdag', 'cw'), 'x': ('cxdag', 'cx'), 'y': ('cydag', 'cy'), 'z': ('czdag', 'cz')}
+        
+        qn_dict = {3: ('w', 'z'), 1: ('x', 'y'), -1: ('y', 'x'), -3: ('z', 'w')}
+        
+        t0 = npc.zeros(legs_first, labels=['wL', 'wR', 'p', 'p*'], dtype=float)
+        i = 0
+        if qn in qn_dict:
+            cr_op, an_op = qn_dict[qn]
+            cr = op_dict[cr_op][1]
+            an = op_dict[an_op][0]
+            if qn == 3 or qn == -3:
+                t0[0, 0, :, :] = v11[i].conj()*self.site.get_op(cr) + u21[i].conj()*self.site.get_op(an)
+            elif qn == 1 or qn == -1:
+                t0[0, 0, :, :] = v22[i].conj()*self.site.get_op(cr) + u12[i].conj()*self.site.get_op(an)
+        t0[0, 1, :, :] = self.site.get_op('JW')
+        mpo.append(t0)
+        
+        for i in range(1,L-1):
+            ti = npc.zeros(legs_bulk, labels=['wL', 'wR', 'p', 'p*'], dtype=float)
+            ti[0,0,:,:] = self.site.get_op('id16')
+            if qn in qn_dict:
+                cr_op, an_op = qn_dict[qn]
+                cr = op_dict[cr_op][1]
+                an = op_dict[an_op][0]
+                if qn == 3 or qn == -3:
+                    ti[1, 0, :, :] = v11[i].conj()*self.site.get_op(cr) + u21[i].conj()*self.site.get_op(an)
+                elif qn == 1 or qn == -1:
+                    ti[1, 0, :, :] = v22[i].conj()*self.site.get_op(cr) + u12[i].conj()*self.site.get_op(an)
+            ti[1, 1, :, :] = self.site.get_op('JW')
+            mpo.append(ti)
+            
+        i = L-1
+        tL = npc.zeros(legs_last, labels=['wL', 'wR', 'p', 'p*'], dtype=float)
+        tL[0,0,:,:] = self.site.get_op('id16')
+        if qn in qn_dict:
+            cr_op, an_op = qn_dict[qn]
+            cr = op_dict[cr_op][1]
+            an = op_dict[an_op][0]
+            if qn == 3 or qn == -3:
+                tL[1, 0, :, :] = v11[i].conj()*self.site.get_op(cr) + u21[i].conj()*self.site.get_op(an)
+            elif qn == 1 or qn == -1:
+                tL[1, 0, :, :] = v22[i].conj()*self.site.get_op(cr) + u12[i].conj()*self.site.get_op(an)
+        mpo.append(tL)
+        
+        return mpo
+    
     def mpomps_step_1time(self, m, flavor):
         v11, v22 = self.v11[:,m], self.v22[:,m]
         u12, u21 = self.u12[:,m], self.u21[:,m]
@@ -417,7 +493,7 @@ class MPOMPS():
         print("MPO-MPS application start")
         
         if self.cons_N == None and self.cons_S == 'U1':
-            qnlist = [3, 1] #use particle-hole symmetry
+            qnlist = [3, 1, -1, -3] #use particle-hole symmetry
             for m in range(nmode):
                 for qn in qnlist:
                     err, self.psi = self.mpomps_step_1time(m, qn)
@@ -457,6 +533,27 @@ def GutzwillerProjectionParton2Spin(partonpsi):
     spinpsi.canonical_form()
     
     return spinpsi
+
+def apply_mpo(mpo, mps, i0=0):
+    """
+    Inputs:
+        1. mpo, list of npc.Array
+        2. mps, tenpy.MPS object
+        3. i0, int, the mpo starts from i0-th site
+    Output:
+        1. mps, tenpy.MPS object
+    
+    It's a ! type function, changing the input mps at the same time
+    """
+    L = len(mpo)
+    for i in range( i0, i0+L ):
+        B = npc.tensordot(mps.get_B(i, 'B'), mpo[i-i0], axes=('p', 'p*'))
+        B = B.combine_legs([['wL', 'vL'], ['wR', 'vR']], qconj=[+1, -1])
+        B.ireplace_labels(['(wL.vL)', '(wR.vR)'], ['vL', 'vR'])
+        B.legs[B.get_leg_index('vL')] = B.get_leg('vL').to_LegCharge()
+        B.legs[B.get_leg_index('vR')] = B.get_leg('vR').to_LegCharge()
+        mps._B[i] = B#.itranspose(('vL', 'p', 'vR'))
+    return mps
 
 if __name__ == "__main__":
     import argparse
@@ -534,23 +631,74 @@ if __name__ == "__main__":
     print(" ")
     print(" ")
     print("----------OBC counting----------")
-    init0 = [0]+[10]*(lx-1)
+    def mpomps_obc(init):
+        try:
+            params_mpomps = dict(cons_N=conn, cons_S=cons, trunc_params=dict(chi_max=Dmpos), pbc=pbc, init=init)
+            mpos = MPOMPS(vmat, umat, **params_mpomps)
+            mpos.run()
+
+            psi = mpos.psi
+            gppsi = GutzwillerProjectionParton2Spin(psi)
+            
+            print("----------OBC sandwiches----------")
+            bbqmpo = so4dmrgmodel.calc_H_MPO()
+            print(" ")
+            print("init is", init)
+            
+            expectation_value = bbqmpo.expectation_value(gppsi)
+            print("the sandwich of projected psi and SO(4) MPO is", expectation_value)
+            
+            overlap_value = gppsimlwo_obc.overlap(gppsi)
+            print("the overlap of gppsimlwo_obc and gppsimlwo_obc", overlap_value)
+
+            if abs(expectation_value-Edmrg) < 1e-6:
+                print("Degenerated init:", init)
+                if abs(overlap_value) < 1e-6:
+                    print("Orthogonal init:", init)
+            return psi, gppsi
+            
+        except Exception as e:
+            print(f"init={init} error: {e}")
+            return None
+        
+    initgs1 = [0,0,0,0]
+    gs1, gpgs1 = mpomps_obc(initgs1)
+    initgs2 = [0,10,0,0]
+    gs2, gpgs2 = mpomps_obc(initgs2)
+    initgs3 = [0,10,2,2]
+    gs3, gpgs3 = mpomps_obc(initgs3)
+    initgs4 = [0,10,11,11]
+    gs4, gpgs4 = mpomps_obc(initgs4)
+    initgs5 = [0,10,5,5]
+    gs5, gpgs5 = mpomps_obc(initgs5)
+    initgs6 = [2,6,10,4]
+    gs6, gpgs6 = mpomps_obc(initgs6)
+    initgs7 = [2,6,10,14]
+    gs7, gpgs7 = mpomps_obc(initgs7)
     
-    print("----------MPO-MPS method: MLWO----------")
-    print("init = da|yz>")
-    params_mpomps = dict(cons_N=conn, cons_S=cons, trunc_params=dict(chi_max=Dmpos), pbc=pbc, init=init0)
-    mpos = MPOMPS(vmat, umat, **params_mpomps)
-    mpos.run()
-    
-    print("----------Gutzwiller projection to SO(4) site----------")
-    psimlwo_obc = mpos.psi
-    gppsimlwo_obc = GutzwillerProjectionParton2Spin(psimlwo_obc)
-    print("Gutzwiller projected MLWO MPO-MPS result is", gppsimlwo_obc)
     print(" ")
+    print("OBC MPS genereation")
+    gscopy = deepcopy(psimlwo_obc)
     
-    print("----------OBC sandwiches----------")
-    bbqmpo = so4dmrgmodel.calc_H_MPO()
-    #print("the overlap of psidmrg and psidmrg2", psidmrg.overlap(psidmrg2))
-    print(" ")
-    print("the sandwich of projected psimlwo_obc and SO(4) MPO is", bbqmpo.expectation_value(gppsimlwo_obc))
-    print("the overlap of psidmrg and gppsimlwo_obc", psidmrg.overlap(gppsimlwo_obc))
+    vmat11, vmat22 = mpos.v11[:,0], mpos.v22[:,0]
+    umat12, umat21 = mpos.u12[:,0], mpos.u21[:,0]
+    boundary_mpo = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, 3)
+    gscopy = apply_mpo(boundary_mpo, gscopy, i0=0)
+    gscopy.canonical_form()
+    
+    vmat11, vmat22 = mpos.v11[:,0], mpos.v22[:,0]
+    umat12, umat21 = mpos.u12[:,0], mpos.u21[:,0]
+    boundary_mpo = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, 1)
+    gscopy = apply_mpo(boundary_mpo, gscopy, i0=0)
+    gscopy.canonical_form()
+    
+    gpgscopy = GutzwillerProjectionParton2Spin(gscopy)
+    
+    print('bbqmpo.expectation_value after-gs application', bbqmpo.expectation_value(gpgscopy))
+    print('gpgs1.overlap(gpgscopy)', gpgs1.overlap(gpgscopy))
+    print('gpgs2.overlap(gpgscopy)', gpgs2.overlap(gpgscopy))
+    print('gpgs3.overlap(gpgscopy)', gpgs3.overlap(gpgscopy))
+    print('gpgs4.overlap(gpgscopy)', gpgs4.overlap(gpgscopy))
+    print('gpgs5.overlap(gpgscopy)', gpgs5.overlap(gpgscopy))
+    print('gpgs6.overlap(gpgscopy)', gpgs6.overlap(gpgscopy))
+    print('gpgs7.overlap(gpgscopy)', gpgs7.overlap(gpgscopy))
