@@ -682,14 +682,41 @@ if __name__ == "__main__":
     
     vmat11, vmat22 = mpos.v11[:,0], mpos.v22[:,0]
     umat12, umat21 = mpos.u12[:,0], mpos.u21[:,0]
-    boundary_mpo = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, 3)
+    boundary_mpo = mpos.get_mpo_U1_an(vmat11, vmat22, umat12, umat21, 3)
     gscopy = apply_mpo(boundary_mpo, gscopy, i0=0)
     gscopy.canonical_form()
     
     vmat11, vmat22 = mpos.v11[:,0], mpos.v22[:,0]
     umat12, umat21 = mpos.u12[:,0], mpos.u21[:,0]
-    boundary_mpo = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, 1)
+    boundary_mpo = mpos.get_mpo_U1_an(vmat11, vmat22, umat12, umat21, 1)
     gscopy = apply_mpo(boundary_mpo, gscopy, i0=0)
+    gscopy.canonical_form()
+
+    vmat11, vmat22 = mpos.v11[:,0], mpos.v22[:,0]
+    umat12, umat21 = mpos.u12[:,0], mpos.u21[:,0]
+    boundary_mpo = mpos.get_mpo_U1_an(vmat11, vmat22, umat12, umat21, -1)
+    gscopy = apply_mpo(boundary_mpo, gscopy, i0=0)
+    gscopy.canonical_form()
+    
+    vmat11, vmat22 = mpos.v11[:,0], mpos.v22[:,0]
+    umat12, umat21 = mpos.u12[:,0], mpos.u21[:,0]
+    boundary_mpo = mpos.get_mpo_U1_an(vmat11, vmat22, umat12, umat21, -3)
+    gscopy = apply_mpo(boundary_mpo, gscopy, i0=0)
+    gscopy.canonical_form()
+
+    gscopy1 = deepcopy(gscopy)
+    gscopy2 = deepcopy(gscopy)
+    vmat11, vmat22 = mpos.v11[:,0], mpos.v22[:,0]
+    umat12, umat21 = mpos.u12[:,0], mpos.u21[:,0]
+    boundary_mpo = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, -3)
+    gscopy1 = apply_mpo(boundary_mpo, gscopy, i0=0)
+    gscopy1.canonical_form()
+    vmat11, vmat22 = mpos.v11[:,3], mpos.v22[:,3]
+    umat12, umat21 = mpos.u12[:,3], mpos.u21[:,3]
+    boundary_mpo = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, -3)
+    gscopy2 = apply_mpo(boundary_mpo, gscopy, i0=0)
+    gscopy2.canonical_form()
+    gscopy = gscopy1.add(gscopy2,1j/np.sqrt(2),1/np.sqrt(2))
     gscopy.canonical_form()
     
     gpgscopy = GutzwillerProjectionParton2Spin(gscopy)
