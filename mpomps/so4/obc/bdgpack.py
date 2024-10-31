@@ -116,7 +116,7 @@ def findmajorana(ham, ref=0.5):
         s2 = np.block([(u-u).conj(), (u).conj()])
     return s1, s2
 
-def bdgeig_zeromode(ham, tol=1e-14, ref=0.5):
+def bdgeig_zeromode(ham, tol=1e-14, ref=0):
     """
     Eigen solver containing zeromode detector. 
     
