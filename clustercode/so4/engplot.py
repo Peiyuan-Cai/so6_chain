@@ -56,15 +56,8 @@ with open(fname, 'wb') as f:
     pickle.dump(engdifflist, f)
     
 fig, ax = plt.subplots(figsize=(15, 10))
-ax.plot(lxlist, [engdifflist[0][i] for i in range(len(lxlist))], '-o', label='K=0.05')
-ax.plot(lxlist, [engdifflist[1][i] for i in range(len(lxlist))], '-o', label='K=0.1')
-ax.plot(lxlist, [engdifflist[2][i] for i in range(len(lxlist))], '-o', label='K=0.15')
-ax.plot(lxlist, [engdifflist[3][i] for i in range(len(lxlist))], '-o', label='K=0.2')
-ax.plot(lxlist, [engdifflist[4][i] for i in range(len(lxlist))], '-o', label='K=0.25')
-ax.plot(lxlist, [engdifflist[5][i] for i in range(len(lxlist))], '-o', label='K=0.3')
-ax.plot(lxlist, [engdifflist[6][i] for i in range(len(lxlist))], '-o', label='K=0.35')
-ax.plot(lxlist, [engdifflist[7][i] for i in range(len(lxlist))], '-o', label='K=0.4')
-ax.plot(lxlist, [engdifflist[8][i] for i in range(len(lxlist))], '-o', label='K=0.45')
+for ki in Klist:
+    ax.plot(lxlist, [engdifflist[Klist.index(ki)][i] for i in range(len(lxlist))], '-o', label='K={}'.format(ki))
 ax.set_title('|E1-E2|(log scale)')
 ax.set_xlabel('lx')
 ax.set_ylabel('|E1-E2|')
