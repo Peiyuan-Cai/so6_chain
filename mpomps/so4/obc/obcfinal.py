@@ -512,6 +512,36 @@ class MPOMPS():
                         print( "applied the {}-th {} mode, the fidelity is {}, the largest bond dimension is {}. ".format( self.n_omode, qn, self.fidelity, self.chi_max) )
                     
                 self.n_omode += 1
+
+    def run_zeromode_skipper(self, zm_index, skip_spin, init=None):
+        '''
+        The ground state generator with zero mode skipper, the skip_spin is the spin index to skip
+        '''
+        self.fidelity = 1
+        if self.n_omode > 0:
+            print("initialize the mpo-mps calculation mps")
+            self.init_mps(init=init)
+            self.n_omode = 0
+        nmode = self._U.shape[0] // 2
+        print("MPO-MPS application with zero mode skipping start")
+
+        if self.cons_N == None and self.cons_S == 'U1':
+            qnlist = [3, 1, -1, -3] #not using the particle-hole symmetry
+            for m in range(nmode):
+                for qn in qnlist:
+                    if m != zm_index: 
+                        err, self.psi = self.mpomps_step_1time(m, qn)
+                        self.fidelity *= 1-err.eps
+                        self.chi_max = np.max(self.psi.chi)
+                        print( "applied the {}-th {} mode, the fidelity is {}, the largest bond dimension is {}. ".format( self.n_omode, qn, self.fidelity, self.chi_max) )
+                    
+                    elif qn not in skip_spin: 
+                        err, self.psi = self.mpomps_step_1time(m, qn)
+                        self.fidelity *= 1-err.eps
+                        self.chi_max = np.max(self.psi.chi)
+                        print( "applied the {}-th {} mode, the fidelity is {}, the largest bond dimension is {}. ".format( self.n_omode, qn, self.fidelity, self.chi_max) )
+                    
+                self.n_omode += 1
                 
 def GutzwillerProjectionParton2Spin(partonpsi):
     partonsite = partonpsi.sites[0]
@@ -680,19 +710,84 @@ if __name__ == "__main__":
     gscopy = deepcopy(psimlwo_obc)
     gscopy.canonical_form()
 
-    #def get_zeromode():
+    def get_zeromode(name, flavor): 
+        #mpos is defined as a global variable
+        if name == 'c':
+            if flavor == 'w':
+                print('getting majorana fermion c_w')
+                vmat11, vmat22 = mpos.v11[:,0], mpos.v22[:,0]
+                umat12, umat21 = mpos.u12[:,0], mpos.u21[:,0]
+                vmat11[:] = 0; vmat11[0] = 1
+                umat21[:] = 0; umat21[0] = 1
+                a1 = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, 3)
+                vmat11[:] = 0; vmat11[-1] = 1
+                umat21[:] = 0; umat21[-1] = -1
+                aN = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, 3)
+                c1 = 1j/np.sqrt(2); cN = 1/np.sqrt(2)
+                return a1, aN, c1, cN
+            elif flavor == 'x':
+                print('getting majorana fermion c_x')
+                vmat11, vmat22 = mpos.v11[:,0], mpos.v22[:,0]
+                umat12, umat21 = mpos.u12[:,0], mpos.u21[:,0]
+                vmat11[:] = 0; vmat11[0] = 1
+                umat21[:] = 0; umat21[0] = -1
+                a1 = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, 1)
+                vmat11[:] = 0; vmat11[-1] = 1
+                umat21[:] = 0; umat21[-1] = 1
+                aN = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, 1)
+                c1 = 1/np.sqrt(2); cN = -1j/np.sqrt(2)
+                return a1, aN, c1, cN
+        elif name == 'd':
+            if flavor == 'w':
+                print('getting majorana fermion d_w')
+                vmat11, vmat22 = mpos.v11[:,0], mpos.v22[:,0]
+                umat12, umat21 = mpos.u12[:,0], mpos.u21[:,0]
+                vmat11[:] = 0; vmat11[0] = 1
+                umat21[:] = 0; umat21[0] = 1
+                a1 = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, -3)
+                vmat11[:] = 0; vmat11[-1] = 1
+                umat21[:] = 0; umat21[-1] = -1
+                aN = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, -3)
+                c1 = -1j/np.sqrt(2); cN = -1/np.sqrt(2)
+                return a1, aN, c1, cN
+            elif flavor == 'x':
+                print('getting majorana fermion d_x')
+                vmat11, vmat22 = mpos.v11[:,0], mpos.v22[:,0]
+                umat12, umat21 = mpos.u12[:,0], mpos.u21[:,0]
+                vmat11[:] = 0; vmat11[0] = 1
+                umat21[:] = 0; umat21[0] = -1
+                a1 = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, -1)
+                vmat11[:] = 0; vmat11[-1] = 1
+                umat21[:] = 0; umat21[-1] = 1
+                aN = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, -1)
+                c1 = -1/np.sqrt(2); cN = 1j/np.sqrt(2)
+                return a1, aN, c1, cN
 
-    
+    def apply_zero_mode_on_gs(op1, opN, co1, coN, gs):
+        gscp1 = deepcopy(gs)
+        gscp2 = deepcopy(gs)
+
+        print("applying a1 on gs")
+        gscp1 = apply_mpo(op1, gscp1, i0=0)
+        gscp1.canonical_form()
+        print("applying aN on gs")
+        gscp2 = apply_mpo(opN, gscp2, i0=0)
+        gscp2.canonical_form()
+
+        gscp = gscp1.add(gscp2,co1,coN)
+        gscp.canonical_form()
+        return gscp
+
+    '''
     gscopy1 = deepcopy(gscopy)
     gscopy2 = deepcopy(gscopy)
-
     vmat11, vmat22 = mpos.v11[:,0], mpos.v22[:,0]
     umat12, umat21 = mpos.u12[:,0], mpos.u21[:,0]
     vmat11[0] = 1; vmat11[1:] = 0
     umat21[0] = 1; umat21[1:] = 0
     print('vmat11',vmat11)
     print('umat21',umat21)
-    boundary_mpo = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, 3)
+    boundary_mpo = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, -3)
     gscopy1 = apply_mpo(boundary_mpo, gscopy, i0=0)
     gscopy1.canonical_form()
 
@@ -702,12 +797,45 @@ if __name__ == "__main__":
     umat21[-1] = -1; umat21[:-1] = 0
     print('vmat11',vmat11)
     print('umat21',umat21)
-    boundary_mpo = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, 3)
+    boundary_mpo = mpos.get_mpo_U1(vmat11, vmat22, umat12, umat21, -3)
     gscopy2 = apply_mpo(boundary_mpo, gscopy, i0=0)
     gscopy2.canonical_form()
 
-    gscopy = gscopy1.add(gscopy2,1j/np.sqrt(2),1/np.sqrt(2))
+    gscopy = gscopy1.add(gscopy2,-1j/np.sqrt(2),-1/np.sqrt(2))
     gscopy.canonical_form()
+    '''
+
+    
+    mpos.run_zeromode_skipper(1, []) #generate a ground state with spin -3
+    skipped_gs = mpos.psi
+    gpskipped_gs = GutzwillerProjectionParton2Spin(skipped_gs)
+    print("skipped ground state energy", bbqmpo.expectation_value(gpskipped_gs))
+
+    '''
+    gscopy1 = deepcopy(skipped_gs)
+    gscopy2 = deepcopy(skipped_gs)
+
+    op1, opN, co1, coN = get_zeromode('c', 'w')
+
+    gscopy1 = apply_mpo(op1, gscopy, i0=0) #should be gscopy1 here
+    gscopy1.canonical_form()
+    gscopy2 = apply_mpo(opN, gscopy, i0=0) #should be gscopy2 here
+    gscopy2.canonical_form()
+
+    gscopy = gscopy1.add(gscopy2,co1,coN)
+    gscopy.canonical_form()
+
+    gpgscopy = GutzwillerProjectionParton2Spin(gscopy)
+    print('bbqmpo.expectation_value after-gs application', bbqmpo.expectation_value(gpgscopy))
+    print('gppsimlwo.overlap(gpgscopy)', gppsimlwo_obc.overlap(gpgscopy))
+    '''
+
+
+    #operator1, operatorN, coefficient1, coefficientN = get_zeromode('c', 'w')
+    #cwgs = apply_zero_mode_on_gs(operator1, operatorN, coefficient1, coefficientN, skipped_gs)
+    #gpcwgs = GutzwillerProjectionParton2Spin(cwgs)
+    #print('bbqmpo.expectation_value after-cw application', bbqmpo.expectation_value(gpcwgs))
+    #print('gppsimlwo.overlap(gpcwgs)', gppsimlwo_obc.overlap(gpcwgs))
     
 
     '''
@@ -723,9 +851,3 @@ if __name__ == "__main__":
     gscopy = apply_mpo(boundary_mpo, gscopy, i0=0)
     gscopy.canonical_form()
     '''
-    
-    
-    gpgscopy = GutzwillerProjectionParton2Spin(gscopy)
-    
-    print('bbqmpo.expectation_value after-gs application', bbqmpo.expectation_value(gpgscopy))
-    print('gppsimlwo.overlap(gpgscopy)', gppsimlwo_obc.overlap(gpgscopy))
