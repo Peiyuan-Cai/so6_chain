@@ -599,7 +599,7 @@ if __name__ == "__main__":
     parser.add_argument("-lamb", type=float, default=0.)
     parser.add_argument("-Dmpos", type=int, default=64)
     parser.add_argument("-Ddmrg", type=int, default=216)
-    parser.add_argument("-sweeps", type=int, default=6)
+    parser.add_argument("-sweeps", type=int, default=10)
     parser.add_argument("-pbc", type=int, default=0)
     parser.add_argument("-J", type=float, default=1.)
     parser.add_argument("-K", type=float, default=0.25)
@@ -775,10 +775,10 @@ if __name__ == "__main__":
         gscp.canonical_form()
         return gscp
 
-    
 
 
-    #-------------------------------application one by one--------------------------------
+
+    #-------------------------------Majorana application--------------------------------
     #the no-skipped ground state
     mpos.run_zeromode_skipper(1, [3, 1, -1, -3]) #generate a ground state with spin -3
     no_skipped_gs = mpos.psi
@@ -882,7 +882,41 @@ if __name__ == "__main__":
         for j in range(len(appgs_list)):
             ovlp_mat[i,j] = np.sqrt(np.real(appgs_list[i].overlap(appgs_list[j]) * appgs_list[i].overlap(appgs_list[j]).conj()))
     '''
+    #diagonalizing the gutzwiller projected MPS survivors
+    val, vec = LA.eigh(gp_ovlp_mat)
+    vec = vec.conj().T
+    new_gp_states = []
+    for i in range(len(val)):
+        for j in range(len(val)-1):
+            if j == 0:
+                temp_state = survive_appgs_list[0].add(survive_appgs_list[1], vec[i,0]/np.sqrt(val[i]), vec[i,1]/np.sqrt(val[i]))
+                temp_state.canonical_form()
+            else:
+                temp_state = temp_state.add(survive_appgs_list[j+1], 1, vec[i,j+1]/np.sqrt(val[i]))
+                temp_state.canonical_form()
+        new_gp_states.append(temp_state)
 
+    ovlp_mat = np.zeros((len(new_gp_states), len(new_gp_states)))
+    for i in range(len(new_gp_states)):
+        for j in range(len(new_gp_states)):
+            ovlp_mat[i,j] = np.real(new_gp_states[i].overlap(new_gp_states[j]))
+            
+    #Gutzwiller guided DMRG
+    GPG_states = []
+    for i in range(len(new_gp_states)):
+        params_dmrg = dict(cons_N=conn, cons_S=cons, Lx = lx, pbc=pbc, J=J, K=K, D=Ddmrg, sweeps=sweeps, verbose=verbose, init=new_gp_states[i])
+        #params_dmrg = dict(cons_N=conn, cons_S=cons, Lx = lx, pbc=pbc, J=J, K=K, D=Ddmrg, sweeps=sweeps, verbose=verbose, init=None)
+        GPDMRG_Ham = BBQJKSO4(params_dmrg)
+        #psidmrg, Edmrg = so4dmrgmodel.run_dmrg_orthogonal(GPG_states)
+        psidmrg, Edmrg = so4dmrgmodel.run_dmrg()
+        print("SO(4) DMRG results")
+        print("The", i, "th GP guided degenerated psi after DMRG is", psidmrg)
+        GPG_states.append(psidmrg)
+        
+    gpg_ovlp_mat = np.zeros((len(GPG_states), len(GPG_states)))
+    for i in range(len(GPG_states)):
+        for j in range(len(GPG_states)):
+            gpg_ovlp_mat[i,j] = np.real(GPG_states[i].overlap(GPG_states[j]))
 
 '''
     #gs1
