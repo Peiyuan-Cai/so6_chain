@@ -916,7 +916,7 @@ if __name__ == "__main__":
     gpg_ovlp_mat = np.zeros((len(GPG_states), len(GPG_states)))
     for i in range(len(GPG_states)):
         for j in range(len(GPG_states)):
-            gpg_ovlp_mat[i,j] = np.real(GPG_states[i].overlap(GPG_states[j]))
+            gpg_ovlp_mat[i,j] = abs(GPG_states[i].overlap(GPG_states[j]))
 
 '''
     #gs1

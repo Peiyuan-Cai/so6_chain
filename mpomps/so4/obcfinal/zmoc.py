@@ -483,21 +483,6 @@ if __name__ == "__main__":
     so4dmrgmodel = BBQJKSO4(params_dmrg)
     bbqmpo = so4dmrgmodel.calc_H_MPO()
     print("the sandwich of projected psimlwo_obc and SO(4) MPO is", bbqmpo.expectation_value(gppsimlwo_obc))
-
-    #16 different starting modes
-    majoprlstlst = [[['c','w']], [['c','x']], [['c','w'], ['c','x']], [],
-                    [['c','w']], [['d','x']], [['c','w'], ['d','x']], [],
-                    [['d','w']], [['c','x']], [['d','w'], ['c','x']], [],
-                    [['d','w']], [['d','x']], [['d','w'], ['d','x']], []]
-    
-    skip_zeromodelist = [[3],[1],[3,1],[],[3],[-1],[3,-1],[],
-                         [-3],[1],[-3,1],[],[-3],[-1],[-3,-1],[]]
-    
-    initlst = [[10]*lx,[10]*lx,[10]*lx,[10]*lx,[9]*lx,[9]*lx,[9]*lx,[9]*lx,
-               [6]*lx,[6]*lx,[6]*lx,[6]*lx,[5]*lx,[5]*lx,[5]*lx,[5]*lx]
-    
-    qnlstlst = [[3,1],[3,1],[3,1],[3,1],[3,-1],[3,-1],[3,-1],[3,-1],
-                [-3,1],[-3,1],[-3,1],[-3,1],[-3,-1],[-3,-1],[-3,-1],[-3,-1]]
     
     def get_start_state(skip_zm, init, qnlist):
         if len(skip_zm) == 0:
@@ -604,3 +589,35 @@ if __name__ == "__main__":
         gscp = gscp1.add(gscp2,co1,coN)
         gscp.canonical_form()
         return gscp
+    
+    #16 different starting modes
+    majoprlstlst = [[['c','w']], [['c','x']], [['c','w'], ['c','x']], [],
+                    [['c','w']], [['d','x']], [['c','w'], ['d','x']], [],
+                    [['d','w']], [['c','x']], [['d','w'], ['c','x']], [],
+                    [['d','w']], [['d','x']], [['d','w'], ['d','x']], []]
+    
+    skip_zeromodelist = [[3],[1],[3,1],[],[3],[-1],[3,-1],[],
+                         [-3],[1],[-3,1],[],[-3],[-1],[-3,-1],[]]
+    
+    initlst = [[10]*lx,[10]*lx,[10]*lx,[10]*lx,[9]*lx,[9]*lx,[9]*lx,[9]*lx,
+               [6]*lx,[6]*lx,[6]*lx,[6]*lx,[5]*lx,[5]*lx,[5]*lx,[5]*lx]
+    
+    qnlstlst = [[3,1],[3,1],[3,1],[3,1],[3,-1],[3,-1],[3,-1],[3,-1],
+                [-3,1],[-3,1],[-3,1],[-3,1],[-3,-1],[-3,-1],[-3,-1],[-3,-1]]
+
+    def get_all_dengenracy():
+        gslist = []
+        gpgslist = []
+        for i in range(16):
+            appgs = get_start_state(skip_zeromodelist[i], initlst[i], qnlstlst[i])
+            if len(majoprlstlst[i])!=0:
+                for majopr in majoprlstlst[i]:
+                    a1, an, c1, cn = get_zeromode(majopr[0], majopr[1])
+                    appgs = apply_zero_mode_on_gs(a1, an, c1, cn, appgs)
+            gpappgs = GutzwillerProjectionParton2Spin(appgs)
+
+            gslist.append(appgs)
+            gpgslist.append(gpappgs)
+        return gslist, gpgslist
+    
+    gslist, gpgslist = get_all_dengenracy()
