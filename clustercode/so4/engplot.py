@@ -4,6 +4,7 @@ SO4 chain DMRG code compact version for HPC use. Use U(1)xU(1) symmetry by defau
 Gutzwiller guided DMRG code for the SO4 chain.
 
 Puiyuen 241029
+    1. 241006 different D
 """
 import numpy as np
 import numpy.linalg as LA
@@ -22,8 +23,9 @@ import matplotlib.pyplot as plt
 from so4bbqham import *
 
 lxlist = [24,28,32,36,40,44,48,52,56,60,64,68,72]
-Klist = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45]
-engdifflist = []
+Klist = [0.245, 0.255]
+engdifflist_2000 = []
+engdifflist_3000 = []
 
 import os
 homepath = os.getcwd()
@@ -39,25 +41,49 @@ for K in Klist:
             psi1 = pickle.load(f)
         with open(fname2, 'rb') as f:
             psi2 = pickle.load(f)
-        
+
         model_paras = dict(cons_N=None, cons_S='U1', Lx = lx, bc='periodic', J=1.0, K=K, D=2000, sweeps=10, verbose=2)
         SO4BBQ = BBQJKSO4(model_paras)
         BBQMPO = SO4BBQ.calc_H_MPO()
-        
+
         eng1 = BBQMPO.expectation_value(psi1)
         eng2 = BBQMPO.expectation_value(psi2)
-        
+
         absengdiff = np.abs(eng2 - eng1)
         engdifflisttemp_K.append(absengdiff)
-    engdifflist.append(engdifflisttemp_K)
-
-fname = homepath + 'engdifflist'
-with open(fname, 'wb') as f:
-    pickle.dump(engdifflist, f)
+    engdifflist_2000.append(engdifflisttemp_K)
     
+for K in Klist:
+    engdifflisttemp_K = []
+    for lx in lxlist:
+        path = homepath + '/data/' + "SO4DMRG_lx{}_J1.0_K{}_pbc1/".format(lx,K)
+        fname1 = path + "psidmrg_jobmposdmrg_lx{}_J1.0_K{}_pbc1_D3000_sweeps10".format(lx,K)
+        fname2 = path + "psidmrg_jobmposdmrg2_lx{}_J1.0_K{}_pbc1_D3000_sweeps10".format(lx,K)
+        with open(fname1, 'rb') as f:
+            psi1 = pickle.load(f)
+        with open(fname2, 'rb') as f:
+            psi2 = pickle.load(f)
+
+        model_paras = dict(cons_N=None, cons_S='U1', Lx = lx, bc='periodic', J=1.0, K=K, D=3000, sweeps=10, verbose=2)
+        SO4BBQ = BBQJKSO4(model_paras)
+        BBQMPO = SO4BBQ.calc_H_MPO()
+
+        eng1 = BBQMPO.expectation_value(psi1)
+        eng2 = BBQMPO.expectation_value(psi2)
+
+        absengdiff = np.abs(eng2 - eng1)
+        engdifflisttemp_K.append(absengdiff)
+    engdifflist_3000.append(engdifflisttemp_K)
+
+# fname = homepath + 'engdifflist'
+# with open(fname, 'wb') as f:
+#     pickle.dump(engdifflist, f)
+
 fig, ax = plt.subplots(figsize=(15, 10))
 for ki in Klist:
-    ax.plot(lxlist, [engdifflist[Klist.index(ki)][i] for i in range(len(lxlist))], '-o', label='K={}'.format(ki))
+    ax.plot(lxlist, [engdifflist_2000[Klist.index(ki)][i] for i in range(len(lxlist))], '-o', label='K={}, D=2000'.format(ki))
+for ki in Klist:
+    ax.plot(lxlist, [engdifflist_3000[Klist.index(ki)][i] for i in range(len(lxlist))], '-x', label='K={}, D=3000'.format(ki))
 ax.set_title('|E1-E2|(log scale)')
 ax.set_xlabel('lx')
 ax.set_ylabel('|E1-E2|')
