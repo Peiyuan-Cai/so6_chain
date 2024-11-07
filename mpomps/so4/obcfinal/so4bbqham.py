@@ -296,6 +296,7 @@ class BBQJKSO4(CouplingModel):
         self.verbose = model_params.get('verbose', 2)
         self.D = model_params.get('D', 200)
         self.sweeps = model_params.get('sweeps', 10)
+        self.init = model_params.get('init', None)
         
         self.so4_generators, self.c_mn, self.d_mn = get_so4_opr_list_new()
         
@@ -365,6 +366,7 @@ class BBQJKSO4(CouplingModel):
             psiinit = MPS.from_product_state(self.lat.mps_sites(), init)            
         elif isinstance(init, MPS):
             psiinit = init
+            print('init by MPS input')
         else:
             print("wrong init")
 
@@ -391,7 +393,7 @@ class BBQJKSO4(CouplingModel):
                            verbose=2,
                            orthogonal_to=gslist)
 
-        init = kwargs.get('init', None)
+        init = self.init
         if init is None:
             N = self.lat.N_sites
             if N%4==0 and N>0:
