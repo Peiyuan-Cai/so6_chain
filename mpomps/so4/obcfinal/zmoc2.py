@@ -688,9 +688,14 @@ if __name__ == "__main__":
         return gslist, gpgslist
     
     gslist, gpgslist = get_all_dengenracy()
-
-    # def get_all_degeneracy():
-    #     gslist = []
-    #     gpgslist = []
-    #     for i in range(16):
-    #         appgs = get_start_state(skip_zeromodelist)
+    
+    # gpg_states = []
+    # for i in range(len(gpgslist)):
+    #     params_dmrg = dict(cons_N=conn, cons_S=cons, Lx = lx, pbc=pbc, J=J, K=K, D=Ddmrg, sweeps=sweeps, verbose=verbose, init=gpgslist[i])
+    #     #params_dmrg = dict(cons_N=conn, cons_S=cons, Lx = lx, pbc=pbc, J=J, K=K, D=Ddmrg, sweeps=sweeps, verbose=verbose, init=None)
+    #     GPDMRG_Ham = BBQJKSO4(params_dmrg)
+    #     #psidmrg, Edmrg = so4dmrgmodel.run_dmrg_orthogonal(GPG_states)
+    #     psidmrg, Edmrg = so4dmrgmodel.run_dmrg()
+    #     print("SO(4) DMRG results")
+    #     print("The", i, "th GP guided degenerated psi after DMRG is", psidmrg)
+    #     gpg_states.append(psidmrg)
