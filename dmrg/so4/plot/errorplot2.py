@@ -26,8 +26,9 @@ import scipy.linalg as spLA
 lxlist = [20,24,28,32,36,40]
 Klist = [0.245, 0.246, 0.247, 0.248, 0.249, 0.251, 0.252, 0.253, 0.254, 0.255]
 Klist_2 = [0.251, 0.252, 0.253, 0.254, 0.255] #the critical side
+#Klist_2 = [0.251, 0.253, 0.255] #the critical side
 engdifflist_2 = [] #critical side
-D = 2000
+D = 4000
 
 E_error_2_dmrg1 = [[-1.3812e-09, -7.1054e-15, -4.6185e-14, 3.5527e-14, 3.5527e-15, 4.9738e-14],
                    [1.7764e-15, 1.0658e-14, 7.1054e-15, -4.6185e-14, -1.3500e-13, 3.1974e-14],
@@ -111,7 +112,7 @@ plt.savefig('edplotgn{}_log_log_2.pdf'.format(D))
 #critical side with errorbar
 fig, ax = plt.subplots(figsize=(12, 8))
 for ki in Klist_2:
-    ax.errorbar(lxlist, [engdifflist_2[Klist_2.index(ki)][i] for i in range(len(lxlist))], yerr=E_error_2[Klist_2.index(ki)], fmt='x-', capsize=3, label='K={}, D={}'.format(ki,D))
+    ax.errorbar(lxlist, [engdifflist_2[Klist_2.index(ki)][i] for i in range(len(lxlist))], yerr=e_error_2[Klist_2.index(ki)], fmt='x-', capsize=3, label='K={}, D={}'.format(ki,D))
 ax.set_title('$|E_1-E_2|$(log-linear scale)')
 ax.set_xlabel('$N$')
 ax.set_ylabel('$|E_1-E_2|$')
@@ -122,7 +123,7 @@ plt.savefig('edplotgn{}_log_linear_2_error.pdf'.format(D))
 
 fig, ax = plt.subplots(figsize=(12, 8))
 for ki in Klist_2:
-    ax.errorbar(lxlist, [engdifflist_2[Klist_2.index(ki)][i] for i in range(len(lxlist))], yerr=E_error_2[Klist_2.index(ki)], fmt='x-', capsize=3, label='K={}, D={}'.format(ki,D))
+    ax.errorbar(lxlist, [engdifflist_2[Klist_2.index(ki)][i] for i in range(len(lxlist))], yerr=e_error_2[Klist_2.index(ki)], fmt='x-', capsize=3, label='K={}, D={}'.format(ki,D))
 ax.set_title('$|E_1-E_2|$(log-log scale)')
 ax.set_xlabel('$N$')
 ax.set_ylabel('$|E_1-E_2|$')
