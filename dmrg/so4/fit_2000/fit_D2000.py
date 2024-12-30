@@ -22,13 +22,17 @@ from so4bbqham import *
 import scipy.linalg as spLA
 from scipy.optimize import curve_fit
 import matplotlib.ticker as ticker
+import matplotlib as mpl
+import matplotlib.cm as cm
+# 配置matplotlib使用LaTeX渲染文本（需确保系统已安装LaTeX相关环境）
+mpl.rcParams['text.usetex'] = True
+plt.rcParams['font.family'] = 'Times New Roman'
 
 lxlist = [24,28,32,36,40]
 Klist = [0.24, 0.241, 0.242, 0.243, 0.244, 0.245, 0.246, 0.247, 0.248, 0.249]
 Klist_1 = [0.245, 0.246, 0.247, 0.248, 0.249] #the dimer side
 Klist_2 = [0.24, 0.241, 0.242, 0.243, 0.244] #the deeper dimer side
 #Klist_2 = [0.251, 0.253, 0.255] #the critical side
-colors = ['r', 'g', 'b', 'm', 'c']  
 engdifflist_2 = [] #critical side
 D = 2000
 
@@ -151,6 +155,16 @@ def exponential_func(x, A, a):
     return A * np.exp(-a * x)
 
 line_styles = ['-', '--', ':', '-.', (0, (3, 5, 1, 5))]
+# colors = ['r', 'g', 'b', 'm', 'c']
+# colors2 = ['y', 'k', 'orange', 'purple', 'brown']
+cmap = cm.get_cmap('cool')
+# 生成颜色列表，根据数据点数量生成对应的渐变色
+combined_Klist = Klist_1 + Klist_2
+# 生成颜色列表，从颜色映射中选取相对较深、辨识度高的部分区间（这里示例选取后半部分区间，可根据实际调整）
+colors = [cmap(i / len(combined_Klist)) for i in range(len(combined_Klist))]
+colors = ['#0077BB', '#33BBEE', '#009988', '#EE7733', '#CC3311', '#EE3377', '#33BBBB', '#00BFFF', '#882255', '#AA4499']
+colors1 = colors[0:5]
+colors2 = colors[5:10]
 
 # 对Klist_1中的每条线进行拟合并绘制拟合结果
 fig, ax = plt.subplots(figsize=(15, 10))
@@ -178,9 +192,9 @@ for idx, ki in enumerate(Klist_2):
     a_fit_list.append(a_fit)
 
     # 绘制原始数据和拟合曲线，设置不同线条样式
-    ax.errorbar(lxlist, y_data, yerr=E_error_2[Klist_2.index(ki)][1:6], fmt='o' + line_style_data, capsize=3, label='K={}, D={}'.format(ki, D), color=color)
-    ax.plot(x_fit, y_fit, label='Fit for K={}, A={}, a={}'.format(np.round(ki,3), np.round(A_fit, 3), np.round(a_fit, 3)),
-            color=color, linestyle=line_style_fit)
+    ax.errorbar(np.array(lxlist) * a_fit, y_data, yerr=E_error_2[Klist_2.index(ki)][1:6], fmt='o' + line_style_data, capsize=3, label='$K$={}'.format(ki), color=color) #times a_fit for data collapse
+    #ax.plot(x_fit, y_fit, label='Fit for $K$={}, $A$={}, $a$={}'.format(np.round(ki,3), np.round(A_fit, 3), np.round(a_fit, 3)), color=color, linestyle=line_style_fit)
+    #ax.plot(x_fit, y_fit, color=color, linestyle=line_style_fit)
     
 for idx, ki in enumerate(Klist_1):
     y_data = [engdifflist_1[Klist_1.index(ki)][i+1] for i in range(len(lxlist))]
@@ -188,7 +202,7 @@ for idx, ki in enumerate(Klist_1):
     popt, pcov = curve_fit(exponential_func, lxlist, y_data)
     A_fit, a_fit = popt
 
-    color = colors[idx]
+    color = colors2[idx]
     line_style_data = line_styles[0]
     line_style_fit = line_styles[1]
 
@@ -201,17 +215,33 @@ for idx, ki in enumerate(Klist_1):
     a_fit_list.append(a_fit)
 
     # 绘制原始数据和拟合曲线，设置不同线条样式
-    ax.errorbar(lxlist, y_data, yerr=E_error_1[Klist_1.index(ki)][1:6], fmt='o' + line_style_data, capsize=3, label='K={}, D={}'.format(ki, D), color=color)
-    ax.plot(x_fit, y_fit, label='Fit for K={}, A={}, a={}'.format(np.round(ki,3), np.round(A_fit, 3), np.round(a_fit, 3)),
-            color=color, linestyle=line_style_fit)
+    ax.errorbar(np.array(lxlist) * a_fit, y_data, yerr=E_error_1[Klist_1.index(ki)][1:6], fmt='o' + line_style_data, capsize=3, label='$K={}$'.format(ki), color=color) #times a_fit for data collapse
+    #ax.plot(x_fit, y_fit, label='Fit for $K$={}, $A$={}, $a$={}'.format(np.round(ki,3), np.round(A_fit, 3), np.round(a_fit, 3)), color=color, linestyle=line_style_fit)
+    #ax.plot(x_fit, y_fit, color=color, linestyle=line_style_fit)
 
-ax.set_title('$|E_1-E_2|$ with Fit (log-linear scale)')
-ax.set_xlabel('$N$')
-ax.set_ylabel('$|E_1-E_2|$')
+#ax.set_title('$|E_1-E_2|$ with Fit (log-linear scale)')
+ax.set_xlabel('$a(K)L$', fontsize=20)
+ax.set_ylabel('$\Delta E = |E_1-E_2|$', fontsize=20)
 ax.set_yscale('log')
 ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.1e'))  # 设置y轴对数刻度显示格式
-ax.legend(loc='best')
-ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+#ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+ax.tick_params(axis='x', labelsize=17)
+ax.tick_params(axis='y', labelsize=17)
+ax.legend(loc='upper right', ncol=2, fontsize=15)
+
+ax_sub = fig.add_axes([0.12,0.12,0.3,0.3])
+ax_sub.plot(Klist, A_fit_list, 'o-', label='$A(K)$')
+ax_sub.plot(Klist, a_fit_list, 'x-', label='$a(K)$')
+#ax_sub.set_title('$A(K)$ and $a(K)$')
+# ax_sub.set_xlabel('$K$', fontsize=15)
+# ax_sub.set_ylabel('$A(K)$ or $a(K)$', fontsize=15)
+# 在右上角添加LaTeX公式，通过调整坐标位置来放置在合适的地方，这里的坐标是坐标轴坐标体系下的值
+# 你可以根据实际图形效果调整x和y的值来改变公式位置
+ax_sub.text(0.31, 0.11, r'$\Delta E = A \exp(-aL)$', fontsize=25, ha='right', va='top', transform=ax.transAxes)
+ax_sub.tick_params(axis='x', labelsize=13)
+ax_sub.tick_params(axis='y', labelsize=13)
+ax_sub.legend(loc='best')
+
 plt.tight_layout()
 plt.savefig('edplotgn{}_log_linear_1_error_fit.pdf'.format(D))
 
@@ -222,7 +252,9 @@ ax.plot(Klist, a_fit_list, 'x-', label='a_fit')
 ax.set_title('A_fit and a_fit with K')
 ax.set_xlabel('K')
 ax.set_ylabel('A_fit/a_fit')
-ax.legend(loc='best')
+#ax.legend(loc='lower left', frameon=False, facecolor='none', edgecolor='none', ncol=2, bbox_to_anchor=(1.1, 1.0))
+ax.legend(loc='best', fontsize=12)
 ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+ax.set_facecolor('#ffffff')
 plt.tight_layout()
 plt.savefig('A_fit_a_fit_K.pdf')

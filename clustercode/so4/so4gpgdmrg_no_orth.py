@@ -5,6 +5,7 @@ Gutzwiller guided DMRG code for the SO4 chain.
 
 Puiyuen 241025
     1. 241106 No orthogonal in jobmposdmrg2
+    2. 241212 Add spin correlation calculation
 """
 import numpy as np
 import numpy.linalg as LA

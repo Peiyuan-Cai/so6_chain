@@ -22,12 +22,21 @@ from so4bbqham import *
 import scipy.linalg as spLA
 from scipy.optimize import curve_fit
 import matplotlib.ticker as ticker
+import matplotlib as mpl
+# 配置matplotlib使用LaTeX渲染文本（需确保系统已安装LaTeX相关环境）
+mpl.rcParams['text.usetex'] = True
+plt.rcParams['font.family'] = 'Times New Roman'
 
-lxlist = [20,24,28,32,36,40] #for the critical side, we don't fit N=40
+
+lxlist = [20,24,28,32,36] #for the critical side, we don't fit N=40
 Klist = [0.251, 0.252, 0.253, 0.254, 0.255, 0.256, 0.257, 0.258, 0.259, 0.26]
 Klist_2 = [0.251, 0.252, 0.253, 0.254, 0.255] #the critical side, identical number 2
 Klist_1 = [0.256, 0.257, 0.258, 0.259, 0.26] #the deeper critical side, identical number 1
 colors = ['r', 'g', 'b', 'm', 'c']  
+colors = ['#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2', '#7F7F7F', '#BCBD22', '#17BECF']
+colors.reverse()
+colors1 = colors[0:5]
+colors2 = colors[5:10]
 engdifflist_2 = [] #critical side
 D = 4000
 
@@ -113,7 +122,7 @@ for idx, ki in enumerate(Klist_2):
     popt, pcov = curve_fit(exponential_func, lxlist, y_data)
     A_fit, a_fit = popt
 
-    color = colors[idx]
+    color = colors1[idx]
     line_style_data = line_styles[0]
     line_style_fit = line_styles[1]
 
@@ -129,8 +138,8 @@ for idx, ki in enumerate(Klist_2):
     a_fit_list.append(a_fit)
 
     # 绘制原始数据和拟合曲线，设置不同线条样式
-    #ax.errorbar(lxlist, y_data, yerr=E_error_2[Klist_2.index(ki)][0:5], fmt='o' + line_style_data, capsize=3, label='K={}, D={}'.format(ki, D), color=color)
-    ax.errorbar(lxlist, y_data, fmt='o' + line_style_data, capsize=3, label='K={}, D={}'.format(ki, D), color=color)
+    ax.errorbar(lxlist, y_data, yerr=E_error_2[Klist_2.index(ki)][0:5], fmt='o' + line_style_data, capsize=3, label='$K={}$'.format(ki), color=color)
+    #ax.errorbar(lxlist, y_data, fmt='o' + line_style_data, capsize=3, label='K={}, D={}'.format(ki, D), color=color)
     #ax.plot(x_fit, y_fit, label='Fit for K={}, A={}, a={}'.format(np.round(ki,3), np.round(A_fit, 3), np.round(a_fit, 3)),color=color, linestyle=line_style_fit)
     
 for idx, ki in enumerate(Klist_1):
@@ -139,7 +148,7 @@ for idx, ki in enumerate(Klist_1):
     popt, pcov = curve_fit(exponential_func, lxlist, y_data)
     A_fit, a_fit = popt
 
-    color = colors[idx]
+    color = colors2[idx]
     line_style_data = line_styles[0]
     line_style_fit = line_styles[1]
 
@@ -152,17 +161,35 @@ for idx, ki in enumerate(Klist_1):
     a_fit_list.append(a_fit)
 
     # 绘制原始数据和拟合曲线，设置不同线条样式
-    #ax.errorbar(lxlist, y_data, yerr=E_error_1[Klist_1.index(ki)][0:5], fmt='x' + line_style_data, capsize=3, label='K={}, D={}'.format(ki, D), color=color)
-    ax.errorbar(lxlist, y_data, fmt='x' + line_style_data, capsize=3, label='K={}, D={}'.format(ki, D), color=color)
+    ax.errorbar(lxlist, y_data, yerr=E_error_1[Klist_1.index(ki)][0:5], fmt='o' + line_style_data, capsize=3, label='$K={}$'.format(ki), color=color)
+    #ax.errorbar(lxlist, y_data, fmt='x' + line_style_data, capsize=3, label='K={}, D={}'.format(ki, D), color=color)
     #ax.plot(x_fit, y_fit, label='Fit for K={}, A={}, a={}'.format(np.round(ki,3), np.round(A_fit, 3), np.round(a_fit, 3)),color=color, linestyle=line_style_fit)
 
-ax.set_title('$|E_1-E_2|$ with Fit (log-linear scale)')
-ax.set_xlabel('$N$')
-ax.set_ylabel('$|E_1-E_2|$')
+A_guide_1 = 0.30
+a_guide_1 = 0.582
+x_guide_1 = np.linspace(20, 36, 100)
+y_guide_1 = A_guide_1 * np.exp(-a_guide_1 * x_guide_1)
+#ax.plot(x_guide_1, y_guide_1, label='$\Delta E={}\exp(-{}L)$'.format(A_guide_1, a_guide_1), color='k', linestyle='--')
+ax.text(0.48, 0.38, r'$\Delta E = 0.3 \exp(-0.582 L)$', fontsize=20, ha='right', va='top', transform=ax.transAxes)
+ax.plot(x_guide_1, y_guide_1, color='k', linestyle='--')
+
+A_guide_2 = 0.30
+a_guide_2 = 0.789
+x_guide_2 = np.linspace(20, 36, 100)
+y_guide_2 = A_guide_2 * np.exp(-a_guide_2 * x_guide_2)
+#ax.plot(x_guide_2, y_guide_2, label='$\Delta E={}\exp(-{}L)$'.format(A_guide_2, a_guide_2), color='k', linestyle='-.')
+ax.text(0.7, 0.76, r'$\Delta E = 0.3 \exp(-0.789 L)$', fontsize=20, ha='right', va='top', transform=ax.transAxes)
+ax.plot(x_guide_2, y_guide_2, color='k', linestyle='-.')
+
+#ax.set_title('$|E_1-E_2|$ (log-linear scale)')
+ax.set_xlabel('$L$', fontsize=20)
+ax.set_ylabel('$\Delta E = |E_1-E_2|$', fontsize=20)
 ax.set_yscale('log')
 ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.1e'))  # 设置y轴对数刻度显示格式
-ax.legend(loc='best')
-ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+ax.legend(loc='best', fontsize=15)
+#ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+ax.tick_params(axis='x', labelsize=17)
+ax.tick_params(axis='y', labelsize=17)
 plt.tight_layout()
 plt.savefig('edplotgn{}_log_linear_1_error_fit.pdf'.format(D))
 

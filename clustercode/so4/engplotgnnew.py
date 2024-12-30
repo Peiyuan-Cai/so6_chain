@@ -142,7 +142,7 @@ for K in Klist_1:
         with open(fname2, 'rb') as f:
             psi2 = pickle.load(f)
 
-        model_paras = dict(cons_N=None, cons_S='U1', Lx = lx, bc='periodic', J=1.0, K=K, D=2000, sweeps=10, verbose=2)
+        model_paras = dict(cons_N=None, cons_S='U1', Lx = lx, bc='periodic', J=1.0, K=K, D=D, sweeps=10, verbose=2)
         SO4BBQ = BBQJKSO4(model_paras)
         BBQMPO = SO4BBQ.calc_H_MPO()
 
