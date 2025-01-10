@@ -166,41 +166,42 @@ for idx, ki in enumerate(Klist_1):
     #ax.plot(x_fit, y_fit, label='Fit for K={}, A={}, a={}'.format(np.round(ki,3), np.round(A_fit, 3), np.round(a_fit, 3)),color=color, linestyle=line_style_fit)
 
 A_guide_1 = 0.30
-a_guide_1 = 0.582
+a_guide_1 = 0.58
 x_guide_1 = np.linspace(20, 36, 100)
 y_guide_1 = A_guide_1 * np.exp(-a_guide_1 * x_guide_1)
 #ax.plot(x_guide_1, y_guide_1, label='$\Delta E={}\exp(-{}L)$'.format(A_guide_1, a_guide_1), color='k', linestyle='--')
-ax.text(0.48, 0.38, r'$\Delta E = 0.3 \exp(-0.582 L)$', fontsize=20, ha='right', va='top', transform=ax.transAxes)
+ax.text(0.78, 0.76, r'$\Delta E = 0.30 \exp(-0.58 L)$', fontsize=28, ha='right', va='top', transform=ax.transAxes)
 ax.plot(x_guide_1, y_guide_1, color='k', linestyle='--')
 
-A_guide_2 = 0.30
-a_guide_2 = 0.789
+A_guide_2 = 0.05
+a_guide_2 = 0.70
 x_guide_2 = np.linspace(20, 36, 100)
 y_guide_2 = A_guide_2 * np.exp(-a_guide_2 * x_guide_2)
 #ax.plot(x_guide_2, y_guide_2, label='$\Delta E={}\exp(-{}L)$'.format(A_guide_2, a_guide_2), color='k', linestyle='-.')
-ax.text(0.7, 0.76, r'$\Delta E = 0.3 \exp(-0.789 L)$', fontsize=20, ha='right', va='top', transform=ax.transAxes)
+ax.text(0.48, 0.38, r'$\Delta E = 0.05 \exp(-0.70 L)$', fontsize=28, ha='right', va='top', transform=ax.transAxes)
 ax.plot(x_guide_2, y_guide_2, color='k', linestyle='-.')
 
 #ax.set_title('$|E_1-E_2|$ (log-linear scale)')
-ax.set_xlabel('$L$', fontsize=20)
-ax.set_ylabel('$\Delta E = |E_1-E_2|$', fontsize=20)
+ax.set_xlabel('$L$', fontsize=26)
+ax.set_ylabel('$\Delta E = |E_1-E_2|$', fontsize=26)
 ax.set_yscale('log')
-ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.1e'))  # 设置y轴对数刻度显示格式
-ax.legend(loc='best', fontsize=15)
+#ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.1e'))  # 设置y轴对数刻度显示格式
+ax.xaxis.set_major_locator(ticker.MultipleLocator(4))
+ax.legend(loc='lower left', ncol=2, fontsize=22)
 #ax.grid(True, which='both', linestyle='--', linewidth=0.5)
-ax.tick_params(axis='x', labelsize=17)
-ax.tick_params(axis='y', labelsize=17)
+ax.tick_params(axis='x', labelsize=24)
+ax.tick_params(axis='y', labelsize=24)
 plt.tight_layout()
 plt.savefig('edplotgn{}_log_linear_1_error_fit.pdf'.format(D))
 
 #plot A_fit and a_fit with K
-fig, ax = plt.subplots(figsize=(15, 10))
-ax.plot(Klist, A_fit_list, 'o-', label='A_fit')
-ax.plot(Klist, a_fit_list, 'x-', label='a_fit')
-ax.set_title('A_fit and a_fit with K')
-ax.set_xlabel('K')
-ax.set_ylabel('A_fit/a_fit')
-ax.legend(loc='best')
-ax.grid(True, which='both', linestyle='--', linewidth=0.5)
-plt.tight_layout()
-plt.savefig('A_fit_a_fit_K.pdf')
+# fig, ax = plt.subplots(figsize=(15, 10))
+# ax.plot(Klist, A_fit_list, 'o-', label='A_fit')
+# ax.plot(Klist, a_fit_list, 'x-', label='a_fit')
+# ax.set_title('A_fit and a_fit with K')
+# ax.set_xlabel('K')
+# ax.set_ylabel('A_fit/a_fit')
+# ax.legend(loc='best')
+# ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+# plt.tight_layout()
+# plt.savefig('A_fit_a_fit_K.pdf')

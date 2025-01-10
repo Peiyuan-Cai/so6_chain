@@ -122,8 +122,8 @@ for K in Klist_1:
         SO4BBQ = BBQJKSO4(model_paras)
         BBQMPO = SO4BBQ.calc_H_MPO()
 
-        hmat = np.zeros((2,2))
-        ovlp_mat = np.zeros((2,2))
+        hmat = np.zeros((2,2), dtype=complex)
+        ovlp_mat = np.zeros((2,2), dtype=complex)
 
         ovlp_mat[0,0] = psi1.overlap(psi1); ovlp_mat[0,1] = psi1.overlap(psi2); 
         ovlp_mat[1,0] = psi2.overlap(psi1); ovlp_mat[1,1] = psi2.overlap(psi2); 

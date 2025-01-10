@@ -192,9 +192,9 @@ for idx, ki in enumerate(Klist_2):
     a_fit_list.append(a_fit)
 
     # 绘制原始数据和拟合曲线，设置不同线条样式
-    ax.errorbar(np.array(lxlist) * a_fit, y_data, yerr=E_error_2[Klist_2.index(ki)][1:6], fmt='o' + line_style_data, capsize=3, label='$K$={}'.format(ki), color=color) #times a_fit for data collapse
+    ax.errorbar(np.array(lxlist), y_data, yerr=E_error_2[Klist_2.index(ki)][1:6], fmt='o' + line_style_data, capsize=3, label='$K$={}'.format(ki), color=color) #times a_fit for data collapse
     #ax.plot(x_fit, y_fit, label='Fit for $K$={}, $A$={}, $a$={}'.format(np.round(ki,3), np.round(A_fit, 3), np.round(a_fit, 3)), color=color, linestyle=line_style_fit)
-    #ax.plot(x_fit, y_fit, color=color, linestyle=line_style_fit)
+    ax.plot(x_fit, y_fit, color=color, linestyle=line_style_fit)
     
 for idx, ki in enumerate(Klist_1):
     y_data = [engdifflist_1[Klist_1.index(ki)][i+1] for i in range(len(lxlist))]
@@ -215,21 +215,22 @@ for idx, ki in enumerate(Klist_1):
     a_fit_list.append(a_fit)
 
     # 绘制原始数据和拟合曲线，设置不同线条样式
-    ax.errorbar(np.array(lxlist) * a_fit, y_data, yerr=E_error_1[Klist_1.index(ki)][1:6], fmt='o' + line_style_data, capsize=3, label='$K={}$'.format(ki), color=color) #times a_fit for data collapse
+    ax.errorbar(np.array(lxlist), y_data, yerr=E_error_1[Klist_1.index(ki)][1:6], fmt='o' + line_style_data, capsize=3, label='$K={}$'.format(ki), color=color) #times a_fit for data collapse
     #ax.plot(x_fit, y_fit, label='Fit for $K$={}, $A$={}, $a$={}'.format(np.round(ki,3), np.round(A_fit, 3), np.round(a_fit, 3)), color=color, linestyle=line_style_fit)
-    #ax.plot(x_fit, y_fit, color=color, linestyle=line_style_fit)
+    ax.plot(x_fit, y_fit, color=color, linestyle=line_style_fit)
 
 #ax.set_title('$|E_1-E_2|$ with Fit (log-linear scale)')
-ax.set_xlabel('$a(K)L$', fontsize=20)
-ax.set_ylabel('$\Delta E = |E_1-E_2|$', fontsize=20)
+ax.set_xlabel('$L$', fontsize=26)
+ax.set_ylabel('$\Delta E = |E_1-E_2|$', fontsize=26)
 ax.set_yscale('log')
-ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.1e'))  # 设置y轴对数刻度显示格式
+#ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.1e'))  # 设置y轴对数刻度显示格式
 #ax.grid(True, which='both', linestyle='--', linewidth=0.5)
-ax.tick_params(axis='x', labelsize=17)
-ax.tick_params(axis='y', labelsize=17)
-ax.legend(loc='upper right', ncol=2, fontsize=15)
+ax.xaxis.set_major_locator(ticker.MultipleLocator(4))
+ax.tick_params(axis='x', labelsize=24)
+ax.tick_params(axis='y', labelsize=24)
+ax.legend(loc='upper right', ncol=2, fontsize=22)
 
-ax_sub = fig.add_axes([0.12,0.12,0.3,0.3])
+ax_sub = fig.add_axes([0.13,0.135,0.3,0.3])
 ax_sub.plot(Klist, A_fit_list, 'o-', label='$A(K)$')
 ax_sub.plot(Klist, a_fit_list, 'x-', label='$a(K)$')
 #ax_sub.set_title('$A(K)$ and $a(K)$')
@@ -237,10 +238,10 @@ ax_sub.plot(Klist, a_fit_list, 'x-', label='$a(K)$')
 # ax_sub.set_ylabel('$A(K)$ or $a(K)$', fontsize=15)
 # 在右上角添加LaTeX公式，通过调整坐标位置来放置在合适的地方，这里的坐标是坐标轴坐标体系下的值
 # 你可以根据实际图形效果调整x和y的值来改变公式位置
-ax_sub.text(0.31, 0.11, r'$\Delta E = A \exp(-aL)$', fontsize=25, ha='right', va='top', transform=ax.transAxes)
-ax_sub.tick_params(axis='x', labelsize=13)
-ax_sub.tick_params(axis='y', labelsize=13)
-ax_sub.legend(loc='best')
+ax_sub.text(0.32, 0.44, r'$\Delta E = A \exp(-aL)$', fontsize=30, ha='right', va='top', transform=ax.transAxes)
+ax_sub.tick_params(axis='x', labelsize=18)
+ax_sub.tick_params(axis='y', labelsize=18)
+ax_sub.legend(loc='best', fontsize=18)
 
 plt.tight_layout()
 plt.savefig('edplotgn{}_log_linear_1_error_fit.pdf'.format(D))
@@ -253,7 +254,7 @@ ax.set_title('A_fit and a_fit with K')
 ax.set_xlabel('K')
 ax.set_ylabel('A_fit/a_fit')
 #ax.legend(loc='lower left', frameon=False, facecolor='none', edgecolor='none', ncol=2, bbox_to_anchor=(1.1, 1.0))
-ax.legend(loc='best', fontsize=12)
+ax.legend(loc='best', fontsize=30)
 ax.grid(True, which='both', linestyle='--', linewidth=0.5)
 ax.set_facecolor('#ffffff')
 plt.tight_layout()
