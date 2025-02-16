@@ -325,6 +325,7 @@ class singlechain(bdg):
         self.dtype = np.float64
         self.pbc = pbc
         self.Nlatt = Nx #the REAL site number
+        self.D = D #the cutoff dimension of pfaffian method
         
     def hamiltonian(self):
         N = self.Nlatt
@@ -478,8 +479,16 @@ def gutzwiller_projection_npcarraylist(npcarraylist):
         gp_npcarraylist.append(res)
     return gp_npcarraylist
 
+import logging
+logging.basicConfig(level=2)
+for _ in ['parso.python.diff', 'parso.cache', 'parso.python.diff', 
+            'parso.cache', 'matplotlib.font_manager', 'tenpy.tools.cache', 
+            'tenpy.algorithms.mps_common', 'tenpy.linalg.lanczos', 'tenpy.tools.params']:
+    logging.getLogger(_).disabled = True
+
 if __name__ == "__main__":
     import argparse
+    import time
     parser = argparse.ArgumentParser()
     parser.add_argument("-lx", type=int, default=8)
     parser.add_argument("-J", type=float, default=1.)
@@ -487,7 +496,8 @@ if __name__ == "__main__":
     parser.add_argument("-chi", type=float, default=1.)
     parser.add_argument("-delta", type=float, default=0.0)
     parser.add_argument("-lamb", type=float, default=1.)
-    parser.add_argument("-D", type=int, default=128)
+    parser.add_argument("-Dpfaf", type=int, default=12)
+    parser.add_argument("-Ddmrg", type=int, default=128)
     parser.add_argument("-pbc", type=int, default=1)
     args = parser.parse_args()
     
@@ -495,7 +505,7 @@ if __name__ == "__main__":
     
     J, K = round(args.J, 6), round(args.K, 6)
     chi, delta, lamb = round(args.chi, 6), round(args.delta, 6), round(args.lamb, 6)
-    lx, D, pbc = args.lx, args.D, args.pbc
+    lx, Ddmrg, Dpfaf, pbc = args.lx, args.Ddmrg, args.Dpfaf, args.pbc
     
     if pbc == 1:
         bc = 'periodic'
@@ -506,7 +516,7 @@ if __name__ == "__main__":
     
     
     print('----------Pfaffian Start---------')
-    singlekitaev = singlechain(chi, delta, lamb, lx, D, pbc)
+    singlekitaev = singlechain(chi, delta, lamb, lx, Dpfaf, pbc)
     singlekitaev.hamiltonian()
     mpsflat = []
     for i in range(1,lx+1):
@@ -540,12 +550,29 @@ if __name__ == "__main__":
     
     
     print("----------DMRG Start---------")
-    bbq_model_params = model_params = dict(Lx=lx, bc=bc, J=J, K=K, cons_N='Z2')
+    bbq_model_params = model_params = dict(Lx=lx, bc=bc, J=J, K=K, D=Ddmrg, cons_N='Z2')
     bbqmodel = BBQJKSO4(bbq_model_params)
-    E, dmrg_psi = bbqmodel.run_dmrg()
+    start_time1 = time.time()
+    dmrg_psi, E = bbqmodel.run_dmrg()
+    end_time1 = time.time()
     print("Spin1 site DMRG results")
     print("psi2 after DMRG is", dmrg_psi)
-    print("E2 is", E)
-    
+    print("Energy is", E)
+
+    print("----------Pfaffian Boost DMRG Start----------")
+    bbq_model_params = model_params = dict(Lx=lx, bc=bc, J=J, K=K, D=Ddmrg, cons_N='Z2')
+    bbqmodel = BBQJKSO4(bbq_model_params)
+    start_time2 = time.time()
+    dmrg_psi2, E2 = bbqmodel.run_dmrg(init=gp_pfaffian_mps)
+    end_time2 = time.time()
+    print("Pfaffian boosted DMRG results")
+    print("pfaffian boosted DMRG is", dmrg_psi2)
+    print("Energy is", E2)
+
+    print("----------Measurements----------")
+    print("Time taken for DMRG: {:.2f} seconds".format(end_time1 - start_time1))
+    print("Time taken for Pfaffian Boosted DMRG: {:.2f} seconds".format(end_time2 - start_time2))
     bbqmpo = bbqmodel.calc_H_MPO()
     print("sandwich of gpmps and BBQJK hamiltonian", bbqmpo.expectation_value(gp_pfaffian_mps))
+    print("overlap of pfaffian state and random DMRG result", dmrg_psi.overlap(gp_pfaffian_mps))
+    print("overlap of two states", dmrg_psi.overlap(dmrg_psi2))
